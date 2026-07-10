@@ -336,6 +336,29 @@ class LightRAGClient:
                 raise
             raise LightRAGError(error_msg)
     
+    async def upload_document_content(self, content: bytes, filename: str) -> UploadResponse:
+        """Upload document content (bytes) directly to LightRAG.
+
+        Unlike upload_document, this doesn't read anything from the local
+        filesystem — the caller supplies the file's bytes directly. This is
+        the only path that works when the MCP server runs on a different
+        machine than the calling agent (e.g. a remote/hosted deployment),
+        since there's no shared filesystem to read a path from.
+        """
+        self.logger.info(f"Uploading document content: {filename} ({len(content)} bytes)")
+        try:
+            files = {"file": (filename, content, "application/octet-stream")}
+            response_data = await self._make_request("POST", "/documents/upload", files=files)
+            result = UploadResponse(**response_data)
+            self.logger.info(f"Successfully uploaded document content: {filename} ({len(content)} bytes) - Track ID: {result.track_id}")
+            return result
+        except Exception as e:
+            error_msg = f"Failed to upload file content {filename}: {str(e)}"
+            self.logger.error(error_msg)
+            if isinstance(e, LightRAGError):
+                raise
+            raise LightRAGError(error_msg)
+
     async def scan_documents(self) -> ScanResponse:
         """Scan for new documents in LightRAG."""
         response_data = await self._make_request("POST", "/documents/scan")

@@ -60,7 +60,6 @@ def _validate_tool_arguments(tool_name: str, arguments: Dict[str, Any]) -> None:
     required_args = {
         "insert_text": ["text"],
         "insert_texts": ["texts"],
-        "upload_document": ["file_path"],
         "get_documents_paginated": ["page", "page_size"],
         "delete_document": ["document_id"],
         "query_text": ["query"],
@@ -86,7 +85,17 @@ def _validate_tool_arguments(tool_name: str, arguments: Dict[str, Any]) -> None:
             raise LightRAGValidationError(error_msg)
     
     # Additional validation for specific tools
-    if tool_name == "get_documents_paginated":
+    if tool_name == "upload_document":
+        file_content = arguments.get("file_content")
+        file_path = arguments.get("file_path")
+        if not file_content and not file_path:
+            raise LightRAGValidationError(
+                "upload_document requires either file_content (base64) + filename, or file_path"
+            )
+        if file_content and not arguments.get("filename"):
+            raise LightRAGValidationError("filename is required when using file_content")
+
+    elif tool_name == "get_documents_paginated":
         page = arguments.get("page", 1)
         page_size = arguments.get("page_size", 10)
         
@@ -343,16 +352,33 @@ async def handle_list_tools() -> List[Tool]:#ListToolsResult:
         ),
         Tool(
             name="upload_document",
-            description="Upload a document file to LightRAG",
+            description=(
+                "Upload a document to LightRAG. Prefer file_content (base64) + "
+                "filename — this works regardless of where the calling agent "
+                "runs, since the content travels in the tool call itself. "
+                "file_path only works when the MCP server process can read "
+                "that path on its own local filesystem (same-machine deployments); "
+                "it will fail with 'File does not exist' for a remote/hosted "
+                "MCP server, since the agent's filesystem and the server's are "
+                "not shared."
+            ),
             inputSchema={
                 "type": "object",
                 "properties": {
+                    "file_content": {
+                        "type": "string",
+                        "description": "Base64-encoded file content. Use together with filename. Works for any deployment, including remote/hosted MCP servers."
+                    },
+                    "filename": {
+                        "type": "string",
+                        "description": "Filename to use when uploading via file_content, e.g. 'report.pdf' (required if file_content is set)"
+                    },
                     "file_path": {
                         "type": "string",
-                        "description": "Path to the file to upload"
+                        "description": "Path to the file on the MCP server's own filesystem. Only works for same-machine deployments."
                     }
                 },
-                "required": ["file_path"]
+                "required": []
             }
         ),
         Tool(
@@ -1007,36 +1033,32 @@ async def handle_call_tool(self, request: CallToolRequest) -> dict:
             logger.info(f"  - Tool: {tool_name}")
             logger.info(f"  - Client type: {type(lightrag_client)}")
             logger.info(f"  - Client base_url: {lightrag_client.base_url}")
-            logger.info(f"  - Raw arguments: {arguments}")
-            
+            logger.info(f"  - Raw arguments keys: {list(arguments.keys())}")
+
+            file_content_b64 = arguments.get("file_content")
+            filename = arguments.get("filename")
             file_path = arguments.get("file_path", "")
-            logger.info(f"UPLOAD_DOCUMENT PARAMETERS:")
-            logger.info(f"  - file_path: '{file_path}'")
-            logger.info(f"  - file_path type: {type(file_path)}")
-            
-            if not file_path or not file_path.strip():
-                logger.error("UPLOAD_DOCUMENT VALIDATION ERROR:")
-                logger.error("  - File path is empty or whitespace only")
-                raise LightRAGValidationError("File path cannot be empty")
-            
-            # Check if file exists
-            if not os.path.exists(file_path):
-                logger.error("UPLOAD_DOCUMENT FILE ERROR:")
-                logger.error(f"  - File does not exist: {file_path}")
-                raise LightRAGValidationError(f"File does not exist: {file_path}")
-            
-            # Get file info
-            file_size = os.path.getsize(file_path)
-            logger.info(f"FILE INFORMATION:")
-            logger.info(f"  - File exists: True")
-            logger.info(f"  - File size: {file_size} bytes")
-            logger.info(f"  - File readable: {os.access(file_path, os.R_OK)}")
-            
-            logger.info("  - Parameter validation passed")
-            logger.info("  - Calling lightrag_client.upload_document()...")
-            
+
             try:
-                result = await lightrag_client.upload_document(file_path)
+                if file_content_b64:
+                    logger.info(f"  - Using file_content (base64), filename: '{filename}'")
+                    import base64
+                    try:
+                        content_bytes = base64.b64decode(file_content_b64, validate=True)
+                    except Exception as e:
+                        raise LightRAGValidationError(f"Invalid base64 file_content: {e}")
+                    logger.info(f"  - Decoded content: {len(content_bytes)} bytes")
+                    result = await lightrag_client.upload_document_content(content_bytes, filename)
+                else:
+                    logger.info(f"  - Using file_path: '{file_path}'")
+                    if not file_path or not file_path.strip():
+                        raise LightRAGValidationError("File path cannot be empty")
+                    if not os.path.exists(file_path):
+                        raise LightRAGValidationError(f"File does not exist: {file_path}")
+                    file_size = os.path.getsize(file_path)
+                    logger.info(f"  - File size: {file_size} bytes, readable: {os.access(file_path, os.R_OK)}")
+                    result = await lightrag_client.upload_document(file_path)
+
                 logger.info("UPLOAD_DOCUMENT SUCCESS:")
                 logger.info(f"  - Result type: {type(result)}")
                 logger.info(f"  - Result content: {repr(result)}")
@@ -1049,7 +1071,7 @@ async def handle_call_tool(self, request: CallToolRequest) -> dict:
                         logger.info(f"  - Message: {result_dump.get('message', 'N/A')}")
                     except Exception as e:
                         logger.error(f"  - model_dump() failed: {e}")
-                
+
                 response = _create_success_response(result, tool_name)
                 logger.info(f"  - Success response created")
                 return response
@@ -1057,8 +1079,6 @@ async def handle_call_tool(self, request: CallToolRequest) -> dict:
                 logger.error("UPLOAD_DOCUMENT FAILED:")
                 logger.error(f"  - Exception type: {type(e)}")
                 logger.error(f"  - Exception message: {str(e)}")
-                logger.error(f"  - File path: {file_path}")
-                logger.error(f"  - File size: {file_size}")
                 import traceback
                 logger.error(f"  - Full traceback: {traceback.format_exc()}")
                 raise
