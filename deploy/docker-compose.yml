@@ -1,0 +1,129 @@
+# =====================================================
+# lightrag-mcp-remote — remote MCP access to LightRAG
+# =====================================================
+#
+# Adds a remote, OAuth-protected MCP endpoint in front of an EXISTING
+# LightRAG instance, so claude.ai / Claude Desktop / Claude Code / any
+# other MCP client can query and update your knowledge base from
+# anywhere — no shared filesystem, no static shared secret, no per-device
+# config file editing.
+#
+#   claude.ai / Claude Desktop / Claude Code / mobile app
+#     --> https://${DOMAIN}/...   (Caddy: automatic HTTPS via Let's Encrypt,
+#                                  rewrites one HTTP header — see Caddyfile)
+#     --> lightrag-mcp-auth :80   (OAuth 2.1 — one-time password login,
+#                                  then Claude manages its own tokens)
+#     --> lightrag-mcp-gw :8000/mcp (private network only)
+#     --> lightrag-mcp-remote     (stdio, installed via uvx-from-git)
+#     --> your LightRAG instance  (LIGHTRAG_URL, X-API-Key)
+#
+# REQUIRES:
+#   - A domain (DOMAIN below) with an A/AAAA record pointing at this host
+#   - Ports 80 and 443 open and free on this host (Caddy needs both for
+#     Let's Encrypt HTTP-01 and HTTPS)
+#   - An existing, reachable LightRAG instance (LIGHTRAG_URL below).
+#     Don't have one yet? See https://github.com/HKUDS/LightRAG
+#
+# Already running Traefik in front of other services on this host? Use
+# docker-compose.traefik.yml instead — see README.md.
+#
+# ENV VARS — copy .env.example to .env and fill in:
+#   DOMAIN, LIGHTRAG_URL, LIGHTRAG_API_KEY, MCP_AUTH_PASSWORD
+# (MCP_GIT_COMMIT is optional, defaults to the last commit tested here)
+# =====================================================
+
+services:
+  caddy:
+    image: caddy:2-alpine
+    container_name: lightrag-mcp-caddy
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      - DOMAIN=${DOMAIN}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - lightrag-mcp-caddy-data:/data
+    depends_on:
+      - lightrag-mcp-auth
+    restart: unless-stopped
+
+  # =====================================================
+  # MCP Gateway (internal only — never exposed directly)
+  # Wraps the stdio-only lightrag-mcp-remote bridge in supergateway and
+  # exposes it as streamable-HTTP on the internal network.
+  #
+  # build: instead of a bare image — supercorp/supergateway:uvx (Alpine)
+  # has no git binary, so uvx-from-git can't clone at startup without it.
+  # mcp-gw/Dockerfile adds only `apk add git` on top of the upstream
+  # image; the MCP package is still installed at container start via
+  # uvx-from-git, not baked into the image.
+  # =====================================================
+  lightrag-mcp-gw:
+    build:
+      context: ./mcp-gw
+    container_name: lightrag-mcp-gw
+    command:
+      - "--stdio"
+      - "uvx --from git+https://github.com/alexbic/lightrag-mcp-remote.git@${MCP_GIT_COMMIT:-c74d159} lightrag-mcp-remote"
+      - "--outputTransport"
+      - "streamableHttp"
+      - "--port"
+      - "8000"
+      - "--streamableHttpPath"
+      - "/mcp"
+      # NOT --stateful: Claude's client doesn't reliably resend the
+      # Mcp-Session-Id header supergateway's stateful mode requires on
+      # every request after initialize (confirmed against a live claude.ai
+      # connector; matches upstream issue supercorp-ai/supergateway#67,
+      # "Not stable session for custom SSE and Claude"). Stateless spawns
+      # a fresh child process per request instead of tracking sessions —
+      # a bit more latency per call, but this whole bug class can't happen.
+    environment:
+      - LIGHTRAG_BASE_URL=${LIGHTRAG_URL}
+      - LIGHTRAG_API_KEY=${LIGHTRAG_API_KEY}
+    networks:
+      - lightrag-mcp-net
+    restart: unless-stopped
+
+  # =====================================================
+  # MCP Auth Proxy — OAuth 2.1 front door for lightrag-mcp-gw
+  # https://github.com/sigbit/mcp-auth-proxy, verified with Claude
+  # Web/Desktop/Code. Handles Dynamic Client Registration, PKCE,
+  # discovery (RFC 9728/8414) — no manual Client ID/Secret needed in
+  # claude.ai's "Add custom connector" dialog, just the URL.
+  # =====================================================
+  lightrag-mcp-auth:
+    image: ghcr.io/sigbit/mcp-auth-proxy:latest
+    container_name: lightrag-mcp-auth
+    command:
+      - "--external-url=https://${DOMAIN}"
+      - "--no-auto-tls"   # Caddy terminates TLS; this listens plain HTTP
+      - "http://lightrag-mcp-gw:8000"
+    environment:
+      # Plain-text password — mcp-auth-proxy bcrypt-hashes it internally
+      # at startup, no htpasswd/openssl step needed. This gates the
+      # one-time browser login when a new client does OAuth; it isn't
+      # used per-request afterward (Claude manages its own OAuth token).
+      - PASSWORD=${MCP_AUTH_PASSWORD}
+      # AUTH_HMAC_SECRET / JWT_PRIVATE_KEY are deliberately NOT set here:
+      # mcp-auth-proxy auto-generates and persists both under /data on
+      # first start, and reuses them on every subsequent restart as long
+      # as the volume survives — so no OAuth sessions get invalidated by
+      # a redeploy. (If you set these as env vars instead, keep them on
+      # ONE line each — some platforms split multi-line env values into
+      # separate bogus entries and silently truncate JWT_PRIVATE_KEY.)
+    volumes:
+      - lightrag-mcp-auth-data:/data
+    networks:
+      - lightrag-mcp-net
+    depends_on:
+      - lightrag-mcp-gw
+    restart: unless-stopped
+
+volumes:
+  lightrag-mcp-auth-data:
+  lightrag-mcp-caddy-data:
+
+networks:
+  lightrag-mcp-net:

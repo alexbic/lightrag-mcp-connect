@@ -1,0 +1,14 @@
+{$DOMAIN} {
+	reverse_proxy lightrag-mcp-auth:80 {
+		# supergateway's bundled MCP SDK only recognizes protocolVersion up
+		# to 2025-06-18 and rejects anything newer with a 400 before the
+		# request ever reaches lightrag-mcp-gw's own logs. Claude sends
+		# MCP-Protocol-Version: 2025-11-25 as an HTTP header (per spec) on
+		# every request after initialize, which breaks tool calls with
+		# a confusing "no tools available" in the Claude UI. Overriding it
+		# here (Caddy's header_up replaces, doesn't append — verified) is a
+		# transport-level shim; nothing about the MCP conversation itself
+		# needs a newer protocol version, so downgrading the header is safe.
+		header_up MCP-Protocol-Version 2025-06-18
+	}
+}

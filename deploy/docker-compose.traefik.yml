@@ -1,0 +1,113 @@
+# =====================================================
+# lightrag-mcp-remote — remote MCP access to LightRAG (Traefik variant)
+# =====================================================
+#
+# Same as docker-compose.yml, but for hosts that already run Traefik in
+# front of other services (e.g. via Dokploy/Coolify-style platforms),
+# instead of bundling Caddy. This is the exact setup this project itself
+# runs in production.
+#
+# REQUIRES:
+#   - Traefik already running, with an entrypoint named `websecure` (TLS)
+#   - Traefik and this stack sharing a common external docker network —
+#     set TRAEFIK_NETWORK below to its name
+#   - An existing, reachable LightRAG instance (LIGHTRAG_URL below)
+#
+# Any reverse proxy other than Traefik or Caddy? Two things it must do in
+# front of lightrag-mcp-auth:
+#   1. Route these paths to it: /mcp, /.well-known/oauth-protected-resource,
+#      /.well-known/oauth-authorization-server, /.idp, /.auth
+#   2. Rewrite the MCP-Protocol-Version request header to 2025-06-18 (see
+#      the long comment on lightrag-mcp-gw's command below for why) —
+#      nginx: `proxy_set_header MCP-Protocol-Version 2025-06-18;`
+#      Caddy:  `header_up MCP-Protocol-Version 2025-06-18` (see Caddyfile)
+#
+# ENV VARS — copy .env.example to .env and fill in:
+#   DOMAIN, LIGHTRAG_URL, LIGHTRAG_API_KEY, MCP_AUTH_PASSWORD, TRAEFIK_NETWORK
+# =====================================================
+
+services:
+  # =====================================================
+  # MCP Gateway (internal only — see lightrag-mcp-auth below for
+  # the Traefik-facing OAuth front door)
+  # =====================================================
+  lightrag-mcp-gw:
+    build:
+      context: ./mcp-gw
+    container_name: lightrag-mcp-gw
+    command:
+      - "--stdio"
+      - "uvx --from git+https://github.com/alexbic/lightrag-mcp-remote.git@${MCP_GIT_COMMIT:-c74d159} lightrag-mcp-remote"
+      - "--outputTransport"
+      - "streamableHttp"
+      - "--port"
+      - "8000"
+      - "--streamableHttpPath"
+      - "/mcp"
+      # NOT --stateful: Claude's client doesn't reliably resend the
+      # Mcp-Session-Id header supergateway's stateful mode requires on
+      # every request after initialize (matches upstream issue
+      # supercorp-ai/supergateway#67). Stateless spawns a fresh child
+      # process per request instead of tracking sessions — a bit more
+      # latency per call, but this whole bug class can't happen.
+    environment:
+      - LIGHTRAG_BASE_URL=${LIGHTRAG_URL}
+      - LIGHTRAG_API_KEY=${LIGHTRAG_API_KEY}
+    networks:
+      - lightrag-mcp-net
+    restart: unless-stopped
+
+  # =====================================================
+  # MCP Auth Proxy — OAuth 2.1 front door for lightrag-mcp-gw
+  # =====================================================
+  lightrag-mcp-auth:
+    image: ghcr.io/sigbit/mcp-auth-proxy:latest
+    container_name: lightrag-mcp-auth
+    command:
+      - "--external-url=https://${DOMAIN}"
+      - "--no-auto-tls"   # Traefik terminates TLS; this listens plain HTTP
+      - "http://lightrag-mcp-gw:8000"
+    environment:
+      - PASSWORD=${MCP_AUTH_PASSWORD}
+      # AUTH_HMAC_SECRET / JWT_PRIVATE_KEY intentionally not set — see
+      # docker-compose.yml's comment on the same lines for why.
+    volumes:
+      - lightrag-mcp-auth-data:/data
+    networks:
+      - lightrag-mcp-net
+      - traefik-network
+    depends_on:
+      - lightrag-mcp-gw
+    restart: unless-stopped
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=${TRAEFIK_NETWORK}
+      # mcp-auth-proxy also owns the OAuth discovery docs (RFC 9728/8414)
+      # and its own /.idp (authorize/token/register) and /.auth (login
+      # page) routes, in addition to /mcp itself.
+      - "traefik.http.routers.lightrag-mcp.rule=Host(`${DOMAIN}`) && (PathPrefix(`/mcp`) || PathPrefix(`/.well-known/oauth-protected-resource`) || PathPrefix(`/.well-known/oauth-authorization-server`) || PathPrefix(`/.idp`) || PathPrefix(`/.auth`))"
+      - traefik.http.routers.lightrag-mcp.entrypoints=websecure
+      - traefik.http.routers.lightrag-mcp.tls=true
+      - traefik.http.routers.lightrag-mcp.service=lightrag-mcp
+      - traefik.http.services.lightrag-mcp.loadbalancer.server.port=80
+      - "traefik.http.routers.lightrag-mcp.middlewares=mcp-protover-fix"
+      # supergateway's bundled MCP SDK only recognizes protocolVersion up
+      # to 2025-06-18 and rejects anything newer with a 400 before the
+      # request ever reaches lightrag-mcp-gw's own logs. Claude sends
+      # MCP-Protocol-Version: 2025-11-25 as an HTTP header (per spec) on
+      # every request after initialize, which otherwise breaks tool calls
+      # with a confusing "no tools available" in the Claude UI.
+      - traefik.http.middlewares.mcp-protover-fix.headers.customrequestheaders.MCP-Protocol-Version=2025-06-18
+      # If this router shares a host with another service (e.g. your
+      # LightRAG WebUI on the same domain), also set an explicit priority
+      # higher than that service's router so /mcp wins:
+      # - traefik.http.routers.lightrag-mcp.priority=100
+
+volumes:
+  lightrag-mcp-auth-data:
+
+networks:
+  lightrag-mcp-net:
+  traefik-network:
+    name: ${TRAEFIK_NETWORK}
+    external: true
