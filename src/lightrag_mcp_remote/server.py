@@ -353,29 +353,40 @@ async def handle_list_tools() -> List[Tool]:#ListToolsResult:
         Tool(
             name="upload_document",
             description=(
-                "Upload a document to LightRAG. Prefer file_content (base64) + "
-                "filename — this works regardless of where the calling agent "
-                "runs, since the content travels in the tool call itself. "
-                "file_path only works when the MCP server process can read "
-                "that path on its own local filesystem (same-machine deployments); "
-                "it will fail with 'File does not exist' for a remote/hosted "
-                "MCP server, since the agent's filesystem and the server's are "
-                "not shared."
+                "Upload a document to LightRAG. Two ways to provide the file — "
+                "pick based on where this MCP server actually runs relative to "
+                "you, not by default habit:\n"
+                "1. file_path — a path on the MCP SERVER's own filesystem. Use "
+                "this ONLY when you've confirmed the MCP server runs on the "
+                "same machine you do (local/same-host deployments). This is "
+                "the cheapest option when it applies: the server reads the "
+                "file directly from disk, so none of its content ever has to "
+                "pass through your context or output tokens.\n"
+                "2. file_content (base64) + filename — for remote/hosted MCP "
+                "servers, where file_path will always fail with 'File does "
+                "not exist' (the server can't see your filesystem). Produce "
+                "the base64 with a deterministic tool/script call (e.g. a "
+                "shell `base64` command, or equivalent code execution) that "
+                "returns the encoded string directly into the tool argument — "
+                "do NOT compute or transcribe the base64 yourself token by "
+                "token as part of your own reasoning; for anything but a "
+                "trivially small file that burns a large number of output "
+                "tokens for no reason."
             ),
             inputSchema={
                 "type": "object",
                 "properties": {
+                    "file_path": {
+                        "type": "string",
+                        "description": "Path to the file on the MCP SERVER's own filesystem. Cheapest option, but only works when the server runs on the same machine as you — otherwise fails with 'File does not exist'."
+                    },
                     "file_content": {
                         "type": "string",
-                        "description": "Base64-encoded file content. Use together with filename. Works for any deployment, including remote/hosted MCP servers."
+                        "description": "The file's bytes, base64-encoded — produced by a script/tool call, not typed out manually. Use together with filename. Required for remote/hosted MCP servers."
                     },
                     "filename": {
                         "type": "string",
-                        "description": "Filename to use when uploading via file_content, e.g. 'report.pdf' (required if file_content is set)"
-                    },
-                    "file_path": {
-                        "type": "string",
-                        "description": "Path to the file on the MCP server's own filesystem. Only works for same-machine deployments."
+                        "description": "Filename to store it as, e.g. 'report.pdf' (required together with file_content)."
                     }
                 },
                 "required": []
@@ -1054,7 +1065,15 @@ async def handle_call_tool(self, request: CallToolRequest) -> dict:
                     if not file_path or not file_path.strip():
                         raise LightRAGValidationError("File path cannot be empty")
                     if not os.path.exists(file_path):
-                        raise LightRAGValidationError(f"File does not exist: {file_path}")
+                        raise LightRAGValidationError(
+                            f"File does not exist on the MCP server's own filesystem: {file_path}. "
+                            "This path was resolved on the machine running the MCP server, not on "
+                            "your (the calling agent's) machine — those are almost never the same "
+                            "for a remote/hosted MCP connection. Re-try this upload using "
+                            "file_content (base64-encoded bytes of the file) + filename instead of "
+                            "file_path: read the file yourself and pass its content directly in the "
+                            "tool call, no server-side path needed."
+                        )
                     file_size = os.path.getsize(file_path)
                     logger.info(f"  - File size: {file_size} bytes, readable: {os.access(file_path, os.R_OK)}")
                     result = await lightrag_client.upload_document(file_path)
