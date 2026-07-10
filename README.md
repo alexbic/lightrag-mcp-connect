@@ -60,16 +60,30 @@ laptop those are the same machine, so it's invisible. Over a remote MCP
 connection (Claude web/mobile/Desktop → this gateway, running on a
 server), they're never the same machine, and the tool just fails.
 
-This fork adds `file_content` (base64) + `filename` as an alternative:
-the content travels inside the tool call itself, no shared filesystem
-needed. `file_path` is kept for same-machine / local-stdio setups where
-it still makes sense.
+This fork adds two alternatives:
+
+- **`file_url`** — a public http(s) link (e.g. an uploaded attachment or
+  artifact URL). The MCP server fetches it itself; nothing about the file
+  ever touches the calling agent's context or output tokens. Protected
+  against SSRF: requests to private, loopback, link-local, and reserved
+  addresses (including the cloud metadata endpoint) are rejected before
+  any connection is attempted, and fetches are capped at 50MB.
+- **`file_content`** (base64) + `filename` — for when there's no URL.
+  The content travels inside the tool call itself, no shared filesystem
+  needed. Should be produced by a script/tool call (e.g. a shell `base64`
+  command), not the model transcribing it token by token — besides the
+  token cost, a large inline base64 blob can also trip content-safety
+  classifiers that flag it as obfuscated data.
+
+`file_path` is kept for same-machine / local-stdio setups, where it's
+free (the server reads the file directly, nothing to fetch or encode).
 
 ```jsonc
 // Before (only works if the MCP server can read this path itself):
 { "file_path": "/some/local/path.pdf" }
 
-// After (works regardless of where the calling agent runs):
+// After — pick whichever applies, in this order of preference:
+{ "file_url": "https://example.com/report.pdf" }
 { "file_content": "<base64 bytes>", "filename": "report.pdf" }
 ```
 
@@ -148,6 +162,13 @@ changed in this fork; noted here so it isn't a surprise.
 
 ## Security notes
 
+- `upload_document`'s `file_url` makes the MCP server fetch a URL the
+  caller supplies. It rejects private/loopback/link-local/reserved
+  addresses (including the cloud metadata endpoint) before connecting,
+  and caps fetches at 50MB — a baseline SSRF defense, not a complete one
+  (it doesn't protect against DNS rebinding between the check and the
+  request). Anyone with a valid OAuth token can use it to make your
+  server issue outbound HTTP requests to arbitrary public URLs.
 - Destructive tools (`delete_document`, `delete_entity`, `delete_relation`,
   `update_entity`, `update_relation`) are active and reachable by anyone
   holding a valid OAuth token for your instance. Neither `supergateway`

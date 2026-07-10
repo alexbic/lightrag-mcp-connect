@@ -68,17 +68,35 @@ conexión MCP remota (Claude web/móvil/Desktop → este gateway, corriendo
 en un servidor), nunca es la misma máquina, y la herramienta simplemente
 falla.
 
-Este fork agrega `file_content` (base64) + `filename` como alternativa:
-el contenido viaja dentro de la propia llamada a la herramienta, sin
-necesidad de sistema de archivos compartido. `file_path` se mantiene para
-configuraciones de stdio local / misma máquina, donde todavía tiene
-sentido.
+Este fork agrega dos alternativas:
+
+- **`file_url`** — un enlace público http(s) (por ejemplo, un archivo
+  adjunto subido o una URL de artifact). El servidor MCP lo obtiene él
+  mismo; nada del contenido del archivo pasa por el contexto ni los
+  tokens de salida del agente que llama. Protegido contra SSRF:
+  las solicitudes a direcciones privadas, loopback, link-local y
+  reservadas (incluido el endpoint de metadatos de la nube) se rechazan
+  antes de intentar cualquier conexión, y las descargas están limitadas
+  a 50MB.
+- **`file_content`** (base64) + `filename` — cuando no hay URL. El
+  contenido viaja dentro de la propia llamada a la herramienta, sin
+  necesidad de sistema de archivos compartido. Debería generarse con una
+  llamada a un script/herramienta (por ejemplo, el comando `base64` de
+  shell), no transcrito token por token por el modelo — además del costo
+  en tokens, un bloque base64 grande incrustado también puede activar
+  falsos positivos en clasificadores de seguridad de contenido, que lo
+  interpretan como datos ofuscados.
+
+`file_path` se mantiene para configuraciones de stdio local / misma
+máquina, donde es gratis (el servidor lee el archivo directamente, sin
+nada que descargar o codificar).
 
 ```jsonc
 // Antes (solo funciona si el servidor MCP puede leer esta ruta él mismo):
 { "file_path": "/some/local/path.pdf" }
 
-// Después (funciona sin importar dónde se ejecute el agente que llama):
+// Después — elige la que aplique, en este orden de preferencia:
+{ "file_url": "https://example.com/report.pdf" }
 { "file_content": "<base64 bytes>", "filename": "report.pdf" }
 ```
 
@@ -160,6 +178,14 @@ aquí para que no sea una sorpresa.
 
 ## Notas de seguridad
 
+- El `file_url` de `upload_document` hace que el servidor MCP obtenga
+  una URL proporcionada por quien llama. Rechaza direcciones privadas/
+  loopback/link-local/reservadas (incluido el endpoint de metadatos de
+  la nube) antes de conectar, y limita las descargas a 50MB — una
+  defensa SSRF básica, no completa (no protege contra DNS rebinding
+  entre la verificación y la solicitud). Cualquiera con un token OAuth
+  válido puede usarlo para hacer que tu servidor emita solicitudes HTTP
+  salientes a URLs públicas arbitrarias.
 - Las herramientas destructivas (`delete_document`, `delete_entity`,
   `delete_relation`, `update_entity`, `update_relation`) están activas y
   accesibles para cualquiera que tenga un token OAuth válido para tu
