@@ -359,6 +359,77 @@ class LightRAGClient:
                 raise
             raise LightRAGError(error_msg)
 
+    async def upload_document_from_url(self, url: str, filename: Optional[str] = None) -> UploadResponse:
+        """Fetch a file from a URL and upload it to LightRAG.
+
+        Neither the calling agent nor the MCP server's own filesystem is
+        involved — the MCP server fetches the bytes itself over HTTP. Unlike
+        file_content, nothing about the file's content ever has to travel
+        through the calling agent's context or output tokens, and unlike
+        file_path, it works regardless of where the MCP server runs. Meant
+        for files the caller can only reference by a public URL (e.g. an
+        uploaded attachment or artifact link), not embed directly.
+
+        Only public http(s) URLs are fetched — requests to loopback,
+        private, and link-local addresses (including the cloud metadata
+        endpoint) are rejected before any connection is attempted, as a
+        baseline defense against this becoming an SSRF vector against the
+        MCP server's own network.
+        """
+        import ipaddress
+        import socket
+        from urllib.parse import urlparse, unquote
+
+        self.logger.info(f"Fetching document from URL: {url}")
+        parsed = urlparse(url)
+        if parsed.scheme not in ("http", "https"):
+            raise LightRAGValidationError(f"file_url must be http(s), got: {parsed.scheme!r}")
+        if not parsed.hostname:
+            raise LightRAGValidationError(f"file_url has no hostname: {url}")
+
+        try:
+            resolved = socket.getaddrinfo(parsed.hostname, None)
+        except socket.gaierror as e:
+            raise LightRAGValidationError(f"Could not resolve file_url host {parsed.hostname!r}: {e}")
+        for family, _, _, _, sockaddr in resolved:
+            ip = ipaddress.ip_address(sockaddr[0])
+            if (
+                ip.is_private or ip.is_loopback or ip.is_link_local
+                or ip.is_multicast or ip.is_reserved or ip.is_unspecified
+            ):
+                raise LightRAGValidationError(
+                    f"file_url resolves to a non-public address ({ip}) — "
+                    "refusing to fetch internal/private network locations."
+                )
+
+        try:
+            async with self.client.stream("GET", url, follow_redirects=True) as resp:
+                resp.raise_for_status()
+                max_bytes = 50 * 1024 * 1024  # 50 MB
+                chunks = []
+                total = 0
+                async for chunk in resp.aiter_bytes():
+                    total += len(chunk)
+                    if total > max_bytes:
+                        raise LightRAGValidationError(
+                            f"file_url content exceeds the {max_bytes // (1024*1024)}MB limit"
+                        )
+                    chunks.append(chunk)
+                content = b"".join(chunks)
+
+                resolved_filename = filename
+                if not resolved_filename:
+                    cd = resp.headers.get("content-disposition", "")
+                    if "filename=" in cd:
+                        resolved_filename = cd.split("filename=")[-1].strip('"; ')
+                if not resolved_filename:
+                    resolved_filename = unquote(parsed.path.rsplit("/", 1)[-1]) or "download"
+        except httpx.HTTPError as e:
+            raise LightRAGValidationError(f"Failed to fetch file_url {url}: {e}")
+
+        self.logger.info(f"Fetched {len(content)} bytes from {url} as '{resolved_filename}'")
+        return await self.upload_document_content(content, resolved_filename)
+
     async def scan_documents(self) -> ScanResponse:
         """Scan for new documents in LightRAG."""
         response_data = await self._make_request("POST", "/documents/scan")
