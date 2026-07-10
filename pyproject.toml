@@ -3,11 +3,12 @@ requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "daniel-lightrag-mcp"
+name = "lightrag-mcp-remote"
 version = "0.1.0"
-description = "MCP server for LightRAG integration"
+description = "MCP server for LightRAG, with remote-deployment support (base64 document upload, no shared filesystem required)"
 authors = [
-    {name = "Daniel Simpkins", email = "daniel@example.com"}
+    {name = "Daniel Simpkins"},
+    {name = "Alex Bic", email = "alex_bic@mac.com"}
 ]
 readme = "README.md"
 requires-python = ">=3.8"
@@ -40,7 +41,7 @@ dev = [
 ]
 
 [project.scripts]
-daniel-lightrag-mcp = "daniel_lightrag_mcp.cli:cli"
+lightrag-mcp-remote = "lightrag_mcp_remote.cli:cli"
 
 [tool.setuptools.packages.find]
 where = ["src"]

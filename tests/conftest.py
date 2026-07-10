@@ -1,5 +1,5 @@
 """
-Pytest configuration and fixtures for daniel-lightrag-mcp tests.
+Pytest configuration and fixtures for lightrag-mcp-remote tests.
 """
 
 import pytest
@@ -8,8 +8,8 @@ from typing import Dict, Any, AsyncGenerator
 from unittest.mock import AsyncMock, MagicMock
 import httpx
 
-from daniel_lightrag_mcp.client import LightRAGClient
-from daniel_lightrag_mcp.server import server
+from lightrag_mcp_remote.client import LightRAGClient
+from lightrag_mcp_remote.server import server
 
 
 @pytest.fixture(scope="session")

@@ -7,7 +7,7 @@ import json
 from unittest.mock import AsyncMock, MagicMock, patch
 import httpx
 
-from daniel_lightrag_mcp.client import (
+from lightrag_mcp_remote.client import (
     LightRAGClient,
     LightRAGError,
     LightRAGConnectionError,
@@ -17,7 +17,7 @@ from daniel_lightrag_mcp.client import (
     LightRAGTimeoutError,
     LightRAGServerError
 )
-from daniel_lightrag_mcp.models import (
+from lightrag_mcp_remote.models import (
     TextDocument,
     InsertResponse,
     QueryResponse,

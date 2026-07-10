@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Test runner script for daniel-lightrag-mcp test suite.
+Test runner script for lightrag-mcp-remote test suite.
 """
 
 import sys
@@ -27,7 +27,7 @@ def run_tests(test_type: str = "all", verbose: bool = False, coverage: bool = Fa
     
     # Add coverage if requested
     if coverage:
-        cmd.extend(["--cov=daniel_lightrag_mcp", "--cov-report=term-missing", "--cov-report=html"])
+        cmd.extend(["--cov=lightrag_mcp_remote", "--cov-report=term-missing", "--cov-report=html"])
     
     # Add specific test selection
     if test_type == "unit":
@@ -66,7 +66,7 @@ def run_tests(test_type: str = "all", verbose: bool = False, coverage: bool = Fa
 
 def main():
     """Main entry point."""
-    parser = argparse.ArgumentParser(description="Run daniel-lightrag-mcp tests")
+    parser = argparse.ArgumentParser(description="Run lightrag-mcp-remote tests")
     parser.add_argument(
         "test_type",
         nargs="?",

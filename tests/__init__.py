@@ -1,1 +1,1 @@
-# Test package for daniel-lightrag-mcp
+# Test package for lightrag-mcp-remote
