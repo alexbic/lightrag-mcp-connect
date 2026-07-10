@@ -1,5 +1,7 @@
 # lightrag-mcp-remote
 
+**English** | [Русский](README.ru.md) | [Español](README.es.md)
+
 Remote, OAuth-protected MCP access to a [LightRAG](https://github.com/HKUDS/LightRAG)
 knowledge base — connect from claude.ai (web/mobile), Claude Desktop, or
 Claude Code from anywhere, not just a machine that happens to run LightRAG
