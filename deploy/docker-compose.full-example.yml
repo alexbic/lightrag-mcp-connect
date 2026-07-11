@@ -1,0 +1,125 @@
+# =====================================================
+# Full example: LightRAG + lightrag-mcp-connect, in one file
+# =====================================================
+#
+# For when you DON'T have LightRAG running yet and want to see the whole
+# picture in one place: LightRAG itself, next to the remote MCP gateway
+# from this repo, so claude.ai / Claude Desktop / Claude Code can reach
+# it from anywhere. This is not a hypothetical sketch — it mirrors a
+# real production deployment, with real values swapped for placeholders
+# pulled from environment variables. No secrets are hardcoded below;
+# copy .env.example to .env and fill in real values before starting this.
+#
+# This is ADDITIVE to docker-compose.yml / docker-compose.traefik.yml,
+# not a replacement — those two assume you already have LightRAG running
+# somewhere reachable. This one includes LightRAG itself, for a genuine
+# from-zero setup. Once you already have LightRAG, drop the `lightrag`
+# service below and go back to the other two files.
+#
+# REQUIRES:
+#   - A domain (DOMAIN below) with an A/AAAA record pointing at this host
+#   - Ports 80 and 443 open and free on this host
+#   - An LLM + embedding provider LightRAG itself needs — see
+#     https://github.com/HKUDS/LightRAG for what LightRAG's own env vars
+#     mean; only the ones this example wires through are listed here
+#
+# ENV VARS — copy .env.example to .env and fill in. In addition to the
+# vars docker-compose.yml needs (DOMAIN, LIGHTRAG_API_KEY,
+# MCP_AUTH_PASSWORD), this file also needs LightRAG's own:
+#   LLM_BINDING, LLM_MODEL, LLM_BINDING_HOST, LLM_BINDING_API_KEY,
+#   EMBEDDING_BINDING, EMBEDDING_MODEL, EMBEDDING_BINDING_HOST,
+#   EMBEDDING_BINDING_API_KEY
+# LIGHTRAG_URL is NOT needed here — this file hardcodes it to
+# http://lightrag:9621 (the service below, reachable over the docker
+# network by its service name).
+# =====================================================
+
+services:
+  lightrag:
+    image: ghcr.io/hkuds/lightrag:latest
+    container_name: lightrag
+    volumes:
+      - lightrag-data:/app/data/rag_storage
+      - lightrag-inputs:/app/data/inputs
+    environment:
+      - LLM_BINDING=${LLM_BINDING}
+      - LLM_MODEL=${LLM_MODEL}
+      - LLM_BINDING_HOST=${LLM_BINDING_HOST}
+      - LLM_BINDING_API_KEY=${LLM_BINDING_API_KEY}
+      - EMBEDDING_BINDING=${EMBEDDING_BINDING}
+      - EMBEDDING_MODEL=${EMBEDDING_MODEL}
+      - EMBEDDING_BINDING_HOST=${EMBEDDING_BINDING_HOST}
+      - EMBEDDING_BINDING_API_KEY=${EMBEDDING_BINDING_API_KEY}
+      - LIGHTRAG_API_KEY=${LIGHTRAG_API_KEY}
+    networks:
+      - lightrag-mcp-net
+    restart: unless-stopped
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: lightrag-mcp-caddy
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      - DOMAIN=${DOMAIN}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - lightrag-mcp-caddy-data:/data
+    depends_on:
+      - lightrag-mcp-auth
+    restart: unless-stopped
+
+  # Same lightrag-mcp-gw as docker-compose.yml, except LIGHTRAG_BASE_URL
+  # points at the `lightrag` service above instead of an external URL.
+  lightrag-mcp-gw:
+    build:
+      context: ./mcp-gw
+    container_name: lightrag-mcp-gw
+    command:
+      - "--stdio"
+      - "uvx --from git+https://github.com/alexbic/lightrag-mcp-connect.git@${MCP_GIT_REF:-v1.0.0} lightrag-mcp-connect"
+      - "--outputTransport"
+      - "streamableHttp"
+      - "--port"
+      - "8000"
+      - "--streamableHttpPath"
+      - "/mcp"
+      # NOT --stateful — see docker-compose.yml's comment on the same
+      # lines for why (supercorp-ai/supergateway#67).
+    environment:
+      - LIGHTRAG_BASE_URL=http://lightrag:9621
+      - LIGHTRAG_API_KEY=${LIGHTRAG_API_KEY}
+    networks:
+      - lightrag-mcp-net
+    depends_on:
+      - lightrag
+    restart: unless-stopped
+
+  lightrag-mcp-auth:
+    image: ghcr.io/sigbit/mcp-auth-proxy:latest
+    container_name: lightrag-mcp-auth
+    command:
+      - "--external-url=https://${DOMAIN}"
+      - "--no-auto-tls"   # Caddy terminates TLS; this listens plain HTTP
+      - "http://lightrag-mcp-gw:8000"
+    environment:
+      - PASSWORD=${MCP_AUTH_PASSWORD}
+      # AUTH_HMAC_SECRET / JWT_PRIVATE_KEY intentionally not set — see
+      # docker-compose.yml's comment on the same lines for why.
+    volumes:
+      - lightrag-mcp-auth-data:/data
+    networks:
+      - lightrag-mcp-net
+    depends_on:
+      - lightrag-mcp-gw
+    restart: unless-stopped
+
+volumes:
+  lightrag-data:
+  lightrag-inputs:
+  lightrag-mcp-auth-data:
+  lightrag-mcp-caddy-data:
+
+networks:
+  lightrag-mcp-net:

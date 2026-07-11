@@ -2,15 +2,26 @@
 
 [English](README.md) | [Русский](README.ru.md) | **Español**
 
-Acceso MCP a una base de conocimiento [LightRAG](https://github.com/HKUDS/LightRAG)
-que funciona en ambos sentidos: **localmente** vía `uvx` (sin
-configuración, acceso directo a archivos) cuando Claude corre en la
-misma máquina que LightRAG, y **remotamente** vía un gateway protegido
-con OAuth (ver `deploy/`) cuando quieres que claude.ai en tu teléfono, o
-cualquier otro dispositivo, acceda a la misma base de conocimiento.
-Misma herramienta, mismo `tools/list`, mismo código — solo elige el
-transporte que corresponda a desde dónde llamas. Nada impide correr
-ambos a la vez (ver "Usando ambos a la vez" más abajo).
+Acceso MCP a una base de conocimiento [LightRAG](https://github.com/HKUDS/LightRAG),
+en dos formas que requieren cantidades de esfuerzo muy distintas:
+
+- **Local** — Claude Desktop o Claude Code en la misma máquina que
+  LightRAG. Una entrada de configuración, `uvx`, cero infraestructura.
+  Funcionando en menos de un minuto. Ver "Uso local (sin
+  configuración)" más abajo.
+- **Remoto** — claude.ai en tu teléfono, o cualquier dispositivo donde
+  LightRAG no vive. Esto es trabajo de infraestructura real, no un
+  interruptor de configuración: despliegas un pequeño stack de Docker
+  (la carpeta `deploy/` de este repositorio — supergateway + un proxy
+  OAuth 2.1) en un servidor, detrás de tu propio dominio, con TLS. Está
+  probado y documentado de extremo a extremo más abajo, pero es
+  genuinamente más esfuerzo que la vía local — no esperes que sea una
+  sola línea.
+
+La misma herramienta MCP y el mismo `tools/list` sostienen ambas
+opciones, y puedes correr ambas a la vez (ver "Usando ambos a la vez"),
+pero "mismo código" no significa "mismo costo de configuración" — lee
+la sección que corresponda a lo que realmente necesitas.
 
 Este es un fork de [desimpkins/daniel-lightrag-mcp](https://github.com/desimpkins/daniel-lightrag-mcp)
 (licencia MIT, conservada en `LICENSE`), más una receta completa en
@@ -21,6 +32,40 @@ Este es un fork de [desimpkins/daniel-lightrag-mcp](https://github.com/desimpkin
 Cada pieza de esto se construyó y verificó contra un despliegue real de
 LightRAG en producción — los archivos compose bajo `deploy/` son lo que
 realmente está en ejecución, no un boceto sin probar.
+
+## Qué cambia fundamentalmente este fork
+
+Dos arreglos fundamentales sobre el upstream — sin ellos, un "gateway
+MCP remoto para LightRAG" se despliega, parece funcionar, y luego se
+rompe en el momento en que realmente lo usas:
+
+1. **`upload_document` funciona desde un agente remoto/aislado.** El
+   upstream solo acepta `file_path`, que se lee en el disco del propio
+   servidor MCP — eso es invisible en stdio local (misma máquina), pero
+   en cuanto el agente que llama y el servidor son máquinas distintas
+   (que es todo el sentido del acceso remoto), simplemente falla con
+   `File does not exist`, sin excepciones. Este fork agrega
+   `text_content` (texto crudo, sin codificar), `file_url` (el servidor
+   lo obtiene él mismo) y `file_content` (base64) como alternativas —
+   así que subir documentos realmente funciona en remoto, no solo
+   consultar lo que ya existe. Ver "Qué se arregló aquí frente al
+   upstream" más abajo para los detalles.
+2. **El despliegue remoto se depuró hasta funcionar de verdad**, no se
+   asumió que funcionaría. Correr `daniel-lightrag-mcp` detrás de
+   supergateway + OAuth contra el cliente *real* de Claude (no un
+   cliente de prueba conforme a la especificación) reveló tres bugs
+   distintos que rompen silenciosamente cada conexión remota: un
+   binario `git` faltante en la propia imagen Docker de supergateway,
+   un modo de sesión `--stateful` que el cliente de Claude no soporta
+   de forma confiable, y un encabezado de versión de protocolo que el
+   SDK incluido en supergateway rechaza de plano. Los tres están
+   arreglados y explicados en "Por qué existe esto" más abajo y en
+   `deploy/`.
+
+Encima de ambos: una **vía local sin configuración** (`uvx --from
+git+URL`, sin clonar ni entorno virtual) para cuando Claude y LightRAG
+están en la misma máquina — una comodidad, no un arreglo, pero también
+documentada más abajo junto con todo lo demás.
 
 ## Por qué existe esto
 
@@ -170,10 +215,8 @@ más específico.
 
 ## Despliegue (remoto)
 
-Necesitas una instancia de LightRAG ya en ejecución, accesible desde este
-stack. ¿Aún no tienes una? Ver
-[HKUDS/LightRAG](https://github.com/HKUDS/LightRAG) — este repositorio
-solo añade la capa de MCP remoto encima.
+Esto asume que ya tienes una instancia de LightRAG en ejecución,
+accesible desde este stack (`LIGHTRAG_URL`).
 
 ```bash
 git clone https://github.com/alexbic/lightrag-mcp-connect.git
@@ -186,6 +229,20 @@ docker compose -f docker-compose.yml up -d --build
 
 # ¿Ya usas Traefik? Configura también TRAEFIK_NETWORK en .env:
 docker compose -f docker-compose.traefik.yml up -d --build
+```
+
+**¿Aún no tienes LightRAG?** `docker-compose.full-example.yml` en la
+misma carpeta incluye LightRAG mismo junto a este gateway, en un solo
+archivo — todo conectado con placeholders desde `.env` (sin claves
+reales en el código, igual que en los dos archivos de arriba). Es por
+donde empezar si partes de cero en un servidor nuevo:
+
+```bash
+cp .env.example .env
+# edita .env: DOMAIN, LIGHTRAG_API_KEY, MCP_AUTH_PASSWORD, más las
+# variables propias de LightRAG — LLM_*/EMBEDDING_* (ver los
+# comentarios en .env.example)
+docker compose -f docker-compose.full-example.yml up -d --build
 ```
 
 ¿Usas un reverse proxy distinto? Ver el bloque de comentarios al inicio
