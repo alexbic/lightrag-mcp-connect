@@ -1,11 +1,16 @@
-# lightrag-mcp-remote
+# lightrag-mcp-connect
 
 [English](README.md) | [Русский](README.ru.md) | **Español**
 
-Acceso remoto vía MCP, protegido con OAuth 2.1, a una base de conocimiento
-[LightRAG](https://github.com/HKUDS/LightRAG) — conéctate desde claude.ai
-(web/móvil), Claude Desktop o Claude Code desde cualquier lugar, no solo
-desde la máquina que ejecuta LightRAG localmente.
+Acceso MCP a una base de conocimiento [LightRAG](https://github.com/HKUDS/LightRAG)
+que funciona en ambos sentidos: **localmente** vía `uvx` (sin
+configuración, acceso directo a archivos) cuando Claude corre en la
+misma máquina que LightRAG, y **remotamente** vía un gateway protegido
+con OAuth (ver `deploy/`) cuando quieres que claude.ai en tu teléfono, o
+cualquier otro dispositivo, acceda a la misma base de conocimiento.
+Misma herramienta, mismo `tools/list`, mismo código — solo elige el
+transporte que corresponda a desde dónde llamas. Nada impide correr
+ambos a la vez (ver "Usando ambos a la vez" más abajo).
 
 Este es un fork de [desimpkins/daniel-lightrag-mcp](https://github.com/desimpkins/daniel-lightrag-mcp)
 (licencia MIT, conservada en `LICENSE`), más una receta completa en
@@ -113,7 +118,7 @@ lightrag-mcp-auth (mcp-auth-proxy)  ──  OAuth 2.1: DCR, PKCE, discovery,
   ▼  (solo red privada, sin autenticación — no accesible desde internet)
 lightrag-mcp-gw (supergateway)  ──  stdio ⇄ streamable-HTTP, sin estado
   ▼
-lightrag-mcp-remote (este repositorio, vía uvx-from-git)  ──  la herramienta MCP real
+lightrag-mcp-connect (este repositorio, vía uvx-from-git)  ──  la herramienta MCP real
   ▼  X-API-Key
 tu instancia de LightRAG
 ```
@@ -122,7 +127,46 @@ tu instancia de LightRAG
 `lightrag-mcp-auth` da a internet, y reenvía al gateway por una red
 docker privada.
 
-## Despliegue
+## Uso local (sin configuración)
+
+Si Claude corre en la misma máquina que tu instancia de LightRAG
+(Claude Desktop o Claude Code en tu propia laptop, hablando con un
+LightRAG local o en el mismo host), sáltate todo lo anterior — no hace
+falta gateway OAuth, ni `deploy/`, ni `git clone`, ni entorno virtual.
+Apunta un cliente MCP directamente a este paquete vía
+[`uvx`](https://docs.astral.sh/uv/) de `uv`:
+
+```json
+{
+  "mcpServers": {
+    "lightrag": {
+      "command": "uvx",
+      "args": [
+        "--from",
+        "git+https://github.com/alexbic/lightrag-mcp-connect.git",
+        "lightrag-mcp-connect"
+      ],
+      "env": {
+        "LIGHTRAG_BASE_URL": "http://localhost:9621",
+        "LIGHTRAG_API_KEY": "tu-api-key-de-lightrag"
+      }
+    }
+  }
+}
+```
+
+`uvx` se instala una vez (`curl -LsSf https://astral.sh/uv/install.sh |
+sh`), y luego obtiene este paquete en un entorno aislado y cacheado en
+la primera ejecución — sin clonar manualmente ni `pip install`. Corriendo
+así también obtienes soporte de `file_path` gratis: el servidor MCP lee
+los archivos directamente desde tu disco, ya que es la misma máquina que
+la herramienta que llama.
+
+Para fijar un commit específico en vez de seguir siempre `main`, añade
+`@<commit>` a la URL:
+`git+https://github.com/alexbic/lightrag-mcp-connect.git@<commit>`.
+
+## Despliegue (remoto)
 
 Necesitas una instancia de LightRAG ya en ejecución, accesible desde este
 stack. ¿Aún no tienes una? Ver
@@ -130,8 +174,8 @@ stack. ¿Aún no tienes una? Ver
 solo añade la capa de MCP remoto encima.
 
 ```bash
-git clone https://github.com/alexbic/lightrag-mcp-remote.git
-cd lightrag-mcp-remote/deploy
+git clone https://github.com/alexbic/lightrag-mcp-connect.git
+cd lightrag-mcp-connect/deploy
 cp .env.example .env
 # edita .env: DOMAIN, LIGHTRAG_URL, LIGHTRAG_API_KEY, MCP_AUTH_PASSWORD
 
@@ -146,7 +190,7 @@ docker compose -f docker-compose.traefik.yml up -d --build
 de `docker-compose.traefik.yml` — dos requisitos, con ejemplos para
 nginx y Caddy.
 
-## Conectar Claude
+## Conectar Claude (remoto)
 
 En claude.ai (o Claude Desktop, o Claude Code): **Settings → Connectors →
 Add custom connector**, introduce:
@@ -161,6 +205,40 @@ pantalla de login única (la `MCP_AUTH_PASSWORD` que configuraste);
 después de eso, Claude gestiona la renovación de su propio token OAuth y
 no necesitarás la contraseña de nuevo hasta que autorices un nuevo
 cliente.
+
+## Usando ambos a la vez
+
+Nada impide configurar el setup local (`uvx`) y el remoto (gateway
+OAuth) al mismo tiempo, con nombres de servidor distintos, en el mismo
+cliente MCP:
+
+```json
+{
+  "mcpServers": {
+    "lightrag-local": {
+      "command": "uvx",
+      "args": [
+        "--from",
+        "git+https://github.com/alexbic/lightrag-mcp-connect.git",
+        "lightrag-mcp-connect"
+      ],
+      "env": {
+        "LIGHTRAG_BASE_URL": "http://localhost:9621",
+        "LIGHTRAG_API_KEY": "tu-api-key-de-lightrag"
+      }
+    }
+  }
+}
+```
+
+más el gateway remoto agregado como custom connector (ver "Conectar
+Claude (remoto)" arriba), con otro nombre. Usa `lightrag-local` cuando
+quieras que `file_path` funcione con archivos que están realmente en tu
+máquina; usa el conector remoto desde tu teléfono, o desde cualquier
+dispositivo donde no vivan los archivos de LightRAG. Es la misma base de
+conocimiento y el mismo código de la herramienta MCP en ambos casos —
+solo dos transportes distintos (stdio vs. streamable-HTTP-sobre-OAuth)
+apuntando a ella.
 
 ## Herramientas
 

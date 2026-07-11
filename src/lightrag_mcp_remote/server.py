@@ -48,7 +48,7 @@ logging.getLogger("httpx").setLevel(logging.WARNING)  # Reduce httpx noise
 logging.getLogger("mcp").setLevel(logging.INFO)
 
 # Initialize the MCP server
-server = Server("lightrag-mcp-remote")
+server = Server("lightrag-mcp-connect")
 
 # Global client instance
 lightrag_client: Optional[LightRAGClient] = None
@@ -2256,7 +2256,7 @@ async def main():
     try:
         logger.info("SERVER INITIALIZATION:")
         logger.info("  - Validating server configuration...")
-        logger.info(f"  - Server name: lightrag-mcp-remote")
+        logger.info(f"  - Server name: lightrag-mcp-connect")
         logger.info(f"  - Server object: {server}")
         logger.info(f"  - Server type: {type(server)}")
         
@@ -2278,7 +2278,7 @@ async def main():
             
             # Create initialization options
             init_options = InitializationOptions(
-                server_name="lightrag-mcp-remote",
+                server_name="lightrag-mcp-connect",
                 server_version="0.1.0",
                 capabilities=capabilities,
             )

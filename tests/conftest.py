@@ -1,5 +1,5 @@
 """
-Pytest configuration and fixtures for lightrag-mcp-remote tests.
+Pytest configuration and fixtures for lightrag-mcp-connect tests.
 """
 
 import pytest

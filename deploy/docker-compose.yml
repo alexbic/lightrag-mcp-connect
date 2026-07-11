@@ -1,5 +1,6 @@
 # =====================================================
-# lightrag-mcp-remote — remote MCP access to LightRAG
+# lightrag-mcp-connect — remote MCP access to LightRAG
+# (this repo also supports local, zero-setup use via uvx — see README.md)
 # =====================================================
 #
 # Adds a remote, OAuth-protected MCP endpoint in front of an EXISTING
@@ -14,7 +15,7 @@
 #     --> lightrag-mcp-auth :80   (OAuth 2.1 — one-time password login,
 #                                  then Claude manages its own tokens)
 #     --> lightrag-mcp-gw :8000/mcp (private network only)
-#     --> lightrag-mcp-remote     (stdio, installed via uvx-from-git)
+#     --> lightrag-mcp-connect   (stdio, installed via uvx-from-git)
 #     --> your LightRAG instance  (LIGHTRAG_URL, X-API-Key)
 #
 # REQUIRES:
@@ -50,7 +51,7 @@ services:
 
   # =====================================================
   # MCP Gateway (internal only — never exposed directly)
-  # Wraps the stdio-only lightrag-mcp-remote bridge in supergateway and
+  # Wraps the stdio-only lightrag-mcp-connect bridge in supergateway and
   # exposes it as streamable-HTTP on the internal network.
   #
   # build: instead of a bare image — supercorp/supergateway:uvx (Alpine)
@@ -65,7 +66,7 @@ services:
     container_name: lightrag-mcp-gw
     command:
       - "--stdio"
-      - "uvx --from git+https://github.com/alexbic/lightrag-mcp-remote.git@${MCP_GIT_COMMIT:-c74d159} lightrag-mcp-remote"
+      - "uvx --from git+https://github.com/alexbic/lightrag-mcp-connect.git@${MCP_GIT_COMMIT:-c74d159} lightrag-mcp-connect"
       - "--outputTransport"
       - "streamableHttp"
       - "--port"

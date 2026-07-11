@@ -1,5 +1,6 @@
 # =====================================================
-# lightrag-mcp-remote — remote MCP access to LightRAG (Traefik variant)
+# lightrag-mcp-connect — remote MCP access to LightRAG (Traefik variant)
+# (this repo also supports local, zero-setup use via uvx — see README.md)
 # =====================================================
 #
 # Same as docker-compose.yml, but for hosts that already run Traefik in
@@ -37,7 +38,7 @@ services:
     container_name: lightrag-mcp-gw
     command:
       - "--stdio"
-      - "uvx --from git+https://github.com/alexbic/lightrag-mcp-remote.git@${MCP_GIT_COMMIT:-c74d159} lightrag-mcp-remote"
+      - "uvx --from git+https://github.com/alexbic/lightrag-mcp-connect.git@${MCP_GIT_COMMIT:-c74d159} lightrag-mcp-connect"
       - "--outputTransport"
       - "streamableHttp"
       - "--port"

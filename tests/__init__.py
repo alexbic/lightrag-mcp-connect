@@ -1,1 +1,1 @@
-# Test package for lightrag-mcp-remote
+# Test package for lightrag-mcp-connect

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Test runner script for lightrag-mcp-remote test suite.
+Test runner script for lightrag-mcp-connect test suite.
 """
 
 import sys
@@ -66,7 +66,7 @@ def run_tests(test_type: str = "all", verbose: bool = False, coverage: bool = Fa
 
 def main():
     """Main entry point."""
-    parser = argparse.ArgumentParser(description="Run lightrag-mcp-remote tests")
+    parser = argparse.ArgumentParser(description="Run lightrag-mcp-connect tests")
     parser.add_argument(
         "test_type",
         nargs="?",
