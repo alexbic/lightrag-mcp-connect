@@ -8,8 +8,8 @@ from typing import Dict, Any, AsyncGenerator
 from unittest.mock import AsyncMock, MagicMock
 import httpx
 
-from lightrag_mcp_remote.client import LightRAGClient
-from lightrag_mcp_remote.server import server
+from lightrag_mcp_connect.client import LightRAGClient
+from lightrag_mcp_connect.server import server
 
 
 @pytest.fixture(scope="session")

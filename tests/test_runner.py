@@ -27,7 +27,7 @@ def run_tests(test_type: str = "all", verbose: bool = False, coverage: bool = Fa
     
     # Add coverage if requested
     if coverage:
-        cmd.extend(["--cov=lightrag_mcp_remote", "--cov-report=term-missing", "--cov-report=html"])
+        cmd.extend(["--cov=lightrag_mcp_connect", "--cov-report=term-missing", "--cov-report=html"])
     
     # Add specific test selection
     if test_type == "unit":

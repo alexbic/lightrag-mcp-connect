@@ -7,14 +7,14 @@ import json
 from unittest.mock import AsyncMock, patch, MagicMock
 from mcp.types import CallToolRequest, CallToolResult, ListToolsRequest
 
-from lightrag_mcp_remote.server import (
+from lightrag_mcp_connect.server import (
     handle_list_tools, 
     handle_call_tool,
     _validate_tool_arguments,
     _create_success_response,
     _create_error_response
 )
-from lightrag_mcp_remote.client import (
+from lightrag_mcp_connect.client import (
     LightRAGError, 
     LightRAGConnectionError, 
     LightRAGValidationError,
@@ -172,7 +172,7 @@ class TestResponseCreation:
 class TestDocumentManagementTools:
     """Test document management MCP tools."""
     
-    @patch('lightrag_mcp_remote.server.lightrag_client')
+    @patch('lightrag_mcp_connect.server.lightrag_client')
     async def test_insert_text_success(self, mock_client):
         """Test successful text insertion."""
         # Setup mock
@@ -196,7 +196,7 @@ class TestDocumentManagementTools:
         content = json.loads(result.content[0].text)
         assert content == mock_result
     
-    @patch('lightrag_mcp_remote.server.lightrag_client')
+    @patch('lightrag_mcp_connect.server.lightrag_client')
     async def test_insert_texts_success(self, mock_client):
         """Test successful multiple text insertion."""
         # Setup mock
@@ -217,7 +217,7 @@ class TestDocumentManagementTools:
         assert not result.isError
         mock_client.insert_texts.assert_called_once_with(texts)
     
-    @patch('lightrag_mcp_remote.server.lightrag_client')
+    @patch('lightrag_mcp_connect.server.lightrag_client')
     async def test_upload_document_success(self, mock_client):
         """Test successful document upload."""
         # Setup mock
@@ -237,7 +237,7 @@ class TestDocumentManagementTools:
         assert not result.isError
         mock_client.upload_document.assert_called_once_with("/path/to/file.txt")
     
-    @patch('lightrag_mcp_remote.server.lightrag_client')
+    @patch('lightrag_mcp_connect.server.lightrag_client')
     async def test_scan_documents_success(self, mock_client):
         """Test successful document scanning."""
         # Setup mock
@@ -257,7 +257,7 @@ class TestDocumentManagementTools:
         assert not result.isError
         mock_client.scan_documents.assert_called_once()
     
-    @patch('lightrag_mcp_remote.server.lightrag_client')
+    @patch('lightrag_mcp_connect.server.lightrag_client')
     async def test_get_documents_success(self, mock_client):
         """Test successful document retrieval."""
         # Setup mock
@@ -277,7 +277,7 @@ class TestDocumentManagementTools:
         assert not result.isError
         mock_client.get_documents.assert_called_once()
     
-    @patch('lightrag_mcp_remote.server.lightrag_client')
+    @patch('lightrag_mcp_connect.server.lightrag_client')
     async def test_get_documents_paginated_success(self, mock_client):
         """Test successful paginated document retrieval."""
         # Setup mock
@@ -300,7 +300,7 @@ class TestDocumentManagementTools:
         assert not result.isError
         mock_client.get_documents_paginated.assert_called_once_with(1, 10)
     
-    @patch('lightrag_mcp_remote.server.lightrag_client')
+    @patch('lightrag_mcp_connect.server.lightrag_client')
     async def test_delete_document_success(self, mock_client):
         """Test successful document deletion."""
         # Setup mock
@@ -320,7 +320,7 @@ class TestDocumentManagementTools:
         assert not result.isError
         mock_client.delete_document.assert_called_once_with("doc_123")
     
-    @patch('lightrag_mcp_remote.server.lightrag_client')
+    @patch('lightrag_mcp_connect.server.lightrag_client')
     async def test_clear_documents_success(self, mock_client):
         """Test successful document clearing."""
         # Setup mock
@@ -345,7 +345,7 @@ class TestDocumentManagementTools:
 class TestQueryTools:
     """Test query MCP tools."""
     
-    @patch('lightrag_mcp_remote.server.lightrag_client')
+    @patch('lightrag_mcp_connect.server.lightrag_client')
     async def test_query_text_success(self, mock_client):
         """Test successful text query."""
         # Setup mock
@@ -374,7 +374,7 @@ class TestQueryTools:
             "test query", mode="hybrid", only_need_context=False
         )
     
-    @patch('lightrag_mcp_remote.server.lightrag_client')
+    @patch('lightrag_mcp_connect.server.lightrag_client')
     async def test_query_text_stream_success(self, mock_client):
         """Test successful streaming text query."""
         # Setup mock - async generator with proper signature
@@ -411,7 +411,7 @@ class TestQueryTools:
 class TestKnowledgeGraphTools:
     """Test knowledge graph MCP tools."""
     
-    @patch('lightrag_mcp_remote.server.lightrag_client')
+    @patch('lightrag_mcp_connect.server.lightrag_client')
     async def test_get_knowledge_graph_success(self, mock_client):
         """Test successful knowledge graph retrieval."""
         # Setup mock
@@ -436,7 +436,7 @@ class TestKnowledgeGraphTools:
         assert not result.isError
         mock_client.get_knowledge_graph.assert_called_once()
     
-    @patch('lightrag_mcp_remote.server.lightrag_client')
+    @patch('lightrag_mcp_connect.server.lightrag_client')
     async def test_get_graph_labels_success(self, mock_client):
         """Test successful graph labels retrieval."""
         # Setup mock
@@ -459,7 +459,7 @@ class TestKnowledgeGraphTools:
         assert not result.isError
         mock_client.get_graph_labels.assert_called_once()
     
-    @patch('lightrag_mcp_remote.server.lightrag_client')
+    @patch('lightrag_mcp_connect.server.lightrag_client')
     async def test_check_entity_exists_success(self, mock_client):
         """Test successful entity existence check."""
         # Setup mock
@@ -479,7 +479,7 @@ class TestKnowledgeGraphTools:
         assert not result.isError
         mock_client.check_entity_exists.assert_called_once_with("Test Entity")
     
-    @patch('lightrag_mcp_remote.server.lightrag_client')
+    @patch('lightrag_mcp_connect.server.lightrag_client')
     async def test_update_entity_success(self, mock_client):
         """Test successful entity update."""
         # Setup mock
@@ -503,7 +503,7 @@ class TestKnowledgeGraphTools:
         assert not result.isError
         mock_client.update_entity.assert_called_once_with("ent_123", properties)
     
-    @patch('lightrag_mcp_remote.server.lightrag_client')
+    @patch('lightrag_mcp_connect.server.lightrag_client')
     async def test_update_relation_success(self, mock_client):
         """Test successful relation update."""
         # Setup mock
@@ -527,7 +527,7 @@ class TestKnowledgeGraphTools:
         assert not result.isError
         mock_client.update_relation.assert_called_once_with("rel_123", properties)
     
-    @patch('lightrag_mcp_remote.server.lightrag_client')
+    @patch('lightrag_mcp_connect.server.lightrag_client')
     async def test_delete_entity_success(self, mock_client):
         """Test successful entity deletion."""
         # Setup mock
@@ -547,7 +547,7 @@ class TestKnowledgeGraphTools:
         assert not result.isError
         mock_client.delete_entity.assert_called_once_with("ent_123")
     
-    @patch('lightrag_mcp_remote.server.lightrag_client')
+    @patch('lightrag_mcp_connect.server.lightrag_client')
     async def test_delete_relation_success(self, mock_client):
         """Test successful relation deletion."""
         # Setup mock
@@ -572,7 +572,7 @@ class TestKnowledgeGraphTools:
 class TestSystemManagementTools:
     """Test system management MCP tools."""
     
-    @patch('lightrag_mcp_remote.server.lightrag_client')
+    @patch('lightrag_mcp_connect.server.lightrag_client')
     async def test_get_pipeline_status_success(self, mock_client):
         """Test successful pipeline status retrieval."""
         # Setup mock
@@ -596,7 +596,7 @@ class TestSystemManagementTools:
         assert not result.isError
         mock_client.get_pipeline_status.assert_called_once()
     
-    @patch('lightrag_mcp_remote.server.lightrag_client')
+    @patch('lightrag_mcp_connect.server.lightrag_client')
     async def test_get_track_status_success(self, mock_client):
         """Test successful track status retrieval."""
         # Setup mock
@@ -620,7 +620,7 @@ class TestSystemManagementTools:
         assert not result.isError
         mock_client.get_track_status.assert_called_once_with("track_123")
     
-    @patch('lightrag_mcp_remote.server.lightrag_client')
+    @patch('lightrag_mcp_connect.server.lightrag_client')
     async def test_get_document_status_counts_success(self, mock_client):
         """Test successful document status counts retrieval."""
         # Setup mock
@@ -646,7 +646,7 @@ class TestSystemManagementTools:
         assert not result.isError
         mock_client.get_document_status_counts.assert_called_once()
     
-    @patch('lightrag_mcp_remote.server.lightrag_client')
+    @patch('lightrag_mcp_connect.server.lightrag_client')
     async def test_clear_cache_success(self, mock_client):
         """Test successful cache clearing."""
         # Setup mock
@@ -666,7 +666,7 @@ class TestSystemManagementTools:
         assert not result.isError
         mock_client.clear_cache.assert_called_once()
     
-    @patch('lightrag_mcp_remote.server.lightrag_client')
+    @patch('lightrag_mcp_connect.server.lightrag_client')
     async def test_get_health_success(self, mock_client):
         """Test successful health check."""
         # Setup mock
@@ -696,7 +696,7 @@ class TestSystemManagementTools:
 class TestErrorHandling:
     """Test error handling in MCP tools."""
     
-    @patch('lightrag_mcp_remote.server.lightrag_client')
+    @patch('lightrag_mcp_connect.server.lightrag_client')
     async def test_tool_validation_error(self, mock_client):
         """Test handling of validation errors."""
         # Create request with missing required argument
@@ -714,7 +714,7 @@ class TestErrorHandling:
         assert content["error_type"] == "LightRAGValidationError"
         assert "Missing required arguments" in content["message"]
     
-    @patch('lightrag_mcp_remote.server.lightrag_client')
+    @patch('lightrag_mcp_connect.server.lightrag_client')
     async def test_client_connection_error(self, mock_client):
         """Test handling of connection errors."""
         # Setup mock to raise connection error
@@ -737,7 +737,7 @@ class TestErrorHandling:
         assert content["error_type"] == "LightRAGConnectionError"
         assert "Connection failed" in content["message"]
     
-    @patch('lightrag_mcp_remote.server.lightrag_client')
+    @patch('lightrag_mcp_connect.server.lightrag_client')
     async def test_unknown_tool_error(self, mock_client):
         """Test handling of unknown tool calls."""
         # Create request for non-existent tool
@@ -753,10 +753,10 @@ class TestErrorHandling:
         assert result.isError
         assert "Unknown tool: unknown_tool" in result.content[0].text
     
-    @patch('lightrag_mcp_remote.server.lightrag_client', None)
+    @patch('lightrag_mcp_connect.server.lightrag_client', None)
     async def test_client_initialization_error(self):
         """Test handling of client initialization errors."""
-        with patch('lightrag_mcp_remote.server.LightRAGClient', side_effect=Exception("Init failed")):
+        with patch('lightrag_mcp_connect.server.LightRAGClient', side_effect=Exception("Init failed")):
             # Create request
             request = CallToolRequest(
                 method="tools/call",

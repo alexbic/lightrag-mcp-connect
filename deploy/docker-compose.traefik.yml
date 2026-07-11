@@ -38,7 +38,7 @@ services:
     container_name: lightrag-mcp-gw
     command:
       - "--stdio"
-      - "uvx --from git+https://github.com/alexbic/lightrag-mcp-connect.git@${MCP_GIT_COMMIT:-c74d159} lightrag-mcp-connect"
+      - "uvx --from git+https://github.com/alexbic/lightrag-mcp-connect.git@${MCP_GIT_COMMIT:-9cd424d} lightrag-mcp-connect"
       - "--outputTransport"
       - "streamableHttp"
       - "--port"

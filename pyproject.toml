@@ -41,7 +41,7 @@ dev = [
 ]
 
 [project.scripts]
-lightrag-mcp-connect = "lightrag_mcp_remote.cli:cli"
+lightrag-mcp-connect = "lightrag_mcp_connect.cli:cli"
 
 [tool.setuptools.packages.find]
 where = ["src"]

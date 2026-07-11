@@ -9,8 +9,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from typing import Dict, Any, List
 
 from mcp.types import CallToolRequest, CallToolResult
-from lightrag_mcp_remote.server import handle_call_tool, handle_list_tools
-from lightrag_mcp_remote.client import LightRAGClient, LightRAGError
+from lightrag_mcp_connect.server import handle_call_tool, handle_list_tools
+from lightrag_mcp_connect.client import LightRAGClient, LightRAGError
 
 
 class MockLightRAGServer:
@@ -196,7 +196,7 @@ async def mock_client_with_server(mock_lightrag_server):
 class TestFullWorkflowIntegration:
     """Test complete workflows using the MCP server with mock responses."""
     
-    @patch('lightrag_mcp_remote.server.lightrag_client')
+    @patch('lightrag_mcp_connect.server.lightrag_client')
     async def test_document_management_workflow(self, mock_client, mock_client_with_server, mock_lightrag_server):
         """Test complete document management workflow."""
         # Setup mock client
@@ -257,7 +257,7 @@ class TestFullWorkflowIntegration:
         docs_data2 = json.loads(get_docs_result2.content[0].text)
         assert docs_data2["total"] == 0
     
-    @patch('lightrag_mcp_remote.server.lightrag_client')
+    @patch('lightrag_mcp_connect.server.lightrag_client')
     async def test_query_workflow(self, mock_client, mock_client_with_server, mock_lightrag_server):
         """Test query workflow with document insertion and querying."""
         # Setup mock client
@@ -325,7 +325,7 @@ class TestFullWorkflowIntegration:
         assert query_data2["total_results"] == 1
         assert "machine learning" in query_data2["results"][0]["snippet"].lower()
     
-    @patch('lightrag_mcp_remote.server.lightrag_client')
+    @patch('lightrag_mcp_connect.server.lightrag_client')
     async def test_system_management_workflow(self, mock_client, mock_client_with_server):
         """Test system management workflow."""
         # Setup mock client
@@ -372,10 +372,10 @@ class TestFullWorkflowIntegration:
 class TestErrorScenarios:
     """Test error handling scenarios in integration context."""
     
-    @patch('lightrag_mcp_remote.server.lightrag_client')
+    @patch('lightrag_mcp_connect.server.lightrag_client')
     async def test_connection_error_handling(self, mock_client):
         """Test handling of connection errors during tool execution."""
-        from lightrag_mcp_remote.client import LightRAGConnectionError
+        from lightrag_mcp_connect.client import LightRAGConnectionError
         
         # Setup mock client to raise connection error
         mock_client.get_health = AsyncMock(
@@ -396,7 +396,7 @@ class TestErrorScenarios:
         assert error_data["error_type"] == "LightRAGConnectionError"
         assert "Connection failed" in error_data["message"]
     
-    @patch('lightrag_mcp_remote.server.lightrag_client')
+    @patch('lightrag_mcp_connect.server.lightrag_client')
     async def test_validation_error_handling(self, mock_client):
         """Test handling of validation errors during tool execution."""
         # Test with invalid pagination parameters
@@ -416,10 +416,10 @@ class TestErrorScenarios:
         assert error_data["error_type"] == "LightRAGValidationError"
         assert "Page must be a positive integer" in error_data["message"]
     
-    @patch('lightrag_mcp_remote.server.lightrag_client')
+    @patch('lightrag_mcp_connect.server.lightrag_client')
     async def test_api_error_handling(self, mock_client):
         """Test handling of API errors during tool execution."""
-        from lightrag_mcp_remote.client import LightRAGAPIError
+        from lightrag_mcp_connect.client import LightRAGAPIError
         
         # Setup mock client to raise API error
         mock_client.delete_document = AsyncMock(
@@ -449,7 +449,7 @@ class TestErrorScenarios:
 class TestStreamingIntegration:
     """Test streaming functionality in integration context."""
     
-    @patch('lightrag_mcp_remote.server.lightrag_client')
+    @patch('lightrag_mcp_connect.server.lightrag_client')
     async def test_streaming_query_integration(self, mock_client):
         """Test streaming query functionality."""
         # Setup mock streaming response
@@ -507,7 +507,7 @@ class TestStreamingIntegration:
 class TestConcurrentOperations:
     """Test concurrent operations and race conditions."""
     
-    @patch('lightrag_mcp_remote.server.lightrag_client')
+    @patch('lightrag_mcp_connect.server.lightrag_client')
     async def test_concurrent_document_operations(self, mock_client, mock_lightrag_server):
         """Test concurrent document operations."""
         # Setup mock client
