@@ -1,9 +1,9 @@
 """
-Daniel LightRAG MCP Server - A Model Context Protocol server for LightRAG integration.
+lightrag-mcp-connect - A Model Context Protocol server for LightRAG integration.
 """
 
-__version__ = "0.1.0"
-__author__ = "Daniel Simpkins"
+__version__ = "1.0.0"
+__author__ = "Alexander Bikmukhametov"
 __description__ = "MCP server for LightRAG integration"
 
 from .client import LightRAGClient, LightRAGError

@@ -2279,7 +2279,7 @@ async def main():
             # Create initialization options
             init_options = InitializationOptions(
                 server_name="lightrag-mcp-connect",
-                server_version="0.1.0",
+                server_version="1.0.0",
                 capabilities=capabilities,
             )
             logger.info(f"INITIALIZATION OPTIONS:")

@@ -30,7 +30,7 @@
 #
 # ENV VARS — copy .env.example to .env and fill in:
 #   DOMAIN, LIGHTRAG_URL, LIGHTRAG_API_KEY, MCP_AUTH_PASSWORD
-# (MCP_GIT_COMMIT is optional, defaults to the last commit tested here)
+# (MCP_GIT_REF is optional, defaults to the latest stable release)
 # =====================================================
 
 services:
@@ -66,7 +66,7 @@ services:
     container_name: lightrag-mcp-gw
     command:
       - "--stdio"
-      - "uvx --from git+https://github.com/alexbic/lightrag-mcp-connect.git@${MCP_GIT_COMMIT:-2e5f501} lightrag-mcp-connect"
+      - "uvx --from git+https://github.com/alexbic/lightrag-mcp-connect.git@${MCP_GIT_REF:-v1.0.0} lightrag-mcp-connect"
       - "--outputTransport"
       - "streamableHttp"
       - "--port"

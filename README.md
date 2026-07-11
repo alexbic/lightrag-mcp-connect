@@ -128,7 +128,7 @@ at this package via [`uv`](https://docs.astral.sh/uv/)'s `uvx`:
       "command": "uvx",
       "args": [
         "--from",
-        "git+https://github.com/alexbic/lightrag-mcp-connect.git",
+        "git+https://github.com/alexbic/lightrag-mcp-connect.git@v1.0.0",
         "lightrag-mcp-connect"
       ],
       "env": {
@@ -147,9 +147,11 @@ way also gets you `file_path` support for free: the MCP server reads
 files directly off your disk, since it's the same machine as the tool
 calling it.
 
-To pin a specific commit instead of always tracking `main`, append
-`@<commit>` to the URL:
-`git+https://github.com/alexbic/lightrag-mcp-connect.git@<commit>`.
+The URL above pins the latest stable release (`@v1.0.0` — see
+[Releases](https://github.com/alexbic/lightrag-mcp-connect/releases)
+for what's available). Drop the `@v1.0.0` entirely to always track
+`main` instead, or replace it with a commit SHA if you need to pin
+something more specific.
 
 ## Deploying (remote)
 
@@ -202,7 +204,7 @@ different server names, in the same MCP client:
       "command": "uvx",
       "args": [
         "--from",
-        "git+https://github.com/alexbic/lightrag-mcp-connect.git",
+        "git+https://github.com/alexbic/lightrag-mcp-connect.git@v1.0.0",
         "lightrag-mcp-connect"
       ],
       "env": {
@@ -271,4 +273,4 @@ changed in this fork; noted here so it isn't a surprise.
 ## License
 
 MIT — see `LICENSE`. Original copyright Daniel Simpkins; changes in this
-fork by Alex Bic.
+fork by Alexander Bikmukhametov.
