@@ -177,7 +177,7 @@ cython_debug/
 *.temp
 *~
 
-# Archive directory should be included in version control
+# Development scratch/debug artifacts from upstream — not useful to users
 archive/
 
 # Temporary test files (but not archived ones)
