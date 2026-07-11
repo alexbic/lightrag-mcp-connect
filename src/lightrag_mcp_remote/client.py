@@ -359,6 +359,35 @@ class LightRAGClient:
                 raise
             raise LightRAGError(error_msg)
 
+    async def upload_document_as_text(self, text: str, filename: str) -> InsertResponse:
+        """Upload a text document via LightRAG's /documents/text endpoint.
+
+        Unlike upload_document_content (which posts multipart bytes to
+        /documents/upload), this posts raw UTF-8 text as a JSON field —
+        no base64, no encoding of any kind. LightRAG doesn't validate
+        file_source against a file-type allowlist here (it's only used as
+        a dedup/tracking key), so this only makes sense for content that's
+        genuinely plain text; binary formats (.pdf/.docx/.pptx/.xlsx) need
+        upload_document_content or upload_document_from_url instead, since
+        LightRAG needs their actual bytes to parse them.
+
+        filename is used as-is for file_source — not rewritten or
+        normalized here (LightRAG normalizes it server-side regardless).
+        """
+        self.logger.info(f"Uploading text document: {filename} ({len(text)} chars)")
+        try:
+            request_data = InsertTextRequest(text=text, file_source=filename)
+            response_data = await self._make_request("POST", "/documents/text", request_data.model_dump())
+            result = InsertResponse(**response_data)
+            self.logger.info(f"Successfully uploaded text document: {filename} - Track ID: {result.track_id}")
+            return result
+        except Exception as e:
+            error_msg = f"Failed to upload text content {filename}: {str(e)}"
+            self.logger.error(error_msg)
+            if isinstance(e, LightRAGError):
+                raise
+            raise LightRAGError(error_msg)
+
     async def upload_document_from_url(self, url: str, filename: Optional[str] = None) -> UploadResponse:
         """Fetch a file from a URL and upload it to LightRAG.
 

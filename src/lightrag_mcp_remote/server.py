@@ -53,6 +53,28 @@ server = Server("lightrag-mcp-remote")
 # Global client instance
 lightrag_client: Optional[LightRAGClient] = None
 
+# LightRAG's own DocumentManager.supported_extensions is computed dynamically
+# from its registered parser engines (lightrag/parser/registry.py) — there's
+# no static constant to import across the process/container boundary, so
+# this is a manual copy of the default-deployment result (no MinerU/Docling
+# endpoint configured — verified against LightRAG v1.5.4 source and against
+# this instance's own 400 error body). Re-check this list if the operator
+# configures MinerU/Docling (adds more suffixes) or upgrades LightRAG.
+LIGHTRAG_SUPPORTED_EXTENSIONS = frozenset({
+    ".txt", ".md", ".mdx", ".pdf", ".docx", ".pptx", ".xlsx", ".rtf", ".odt",
+    ".tex", ".epub", ".html", ".htm", ".csv", ".json", ".xml", ".yaml",
+    ".yml", ".log", ".conf", ".ini", ".properties", ".sql", ".bat", ".sh",
+    ".c", ".h", ".cpp", ".hpp", ".py", ".java", ".js", ".ts", ".swift",
+    ".go", ".rb", ".php", ".css", ".scss", ".less",
+})
+
+# These are the only formats with a dedicated binary parser in LightRAG
+# (pypdf/python-docx/python-pptx/openpyxl) — everything else in
+# LIGHTRAG_SUPPORTED_EXTENSIONS is decoded by LightRAG itself as plain
+# UTF-8 text, so text_content is equally valid for those. These four
+# genuinely need real file bytes; text_content can't represent them.
+LIGHTRAG_BINARY_ONLY_EXTENSIONS = frozenset({".pdf", ".docx", ".pptx", ".xlsx"})
+
 
 def _validate_tool_arguments(tool_name: str, arguments: Dict[str, Any]) -> None:
     """Validate tool arguments against expected schemas."""
@@ -86,15 +108,44 @@ def _validate_tool_arguments(tool_name: str, arguments: Dict[str, Any]) -> None:
     
     # Additional validation for specific tools
     if tool_name == "upload_document":
+        text_content = arguments.get("text_content")
         file_url = arguments.get("file_url")
         file_content = arguments.get("file_content")
         file_path = arguments.get("file_path")
-        if not file_url and not file_content and not file_path:
+        filename = arguments.get("filename")
+
+        if not text_content and not file_url and not file_content and not file_path:
             raise LightRAGValidationError(
-                "upload_document requires one of: file_url, file_path, or file_content (base64) + filename"
+                "upload_document requires one of: text_content, file_url, file_path, "
+                "or file_content (base64) + filename"
             )
-        if file_content and not arguments.get("filename"):
+        if text_content and file_content:
+            raise LightRAGValidationError(
+                "upload_document got both text_content and file_content — pick one. "
+                "text_content for text/markdown/code, file_content only for binary "
+                "formats (.pdf/.docx/.pptx/.xlsx)."
+            )
+        if text_content and not filename:
+            raise LightRAGValidationError("filename is required when using text_content")
+        if file_content and not filename:
             raise LightRAGValidationError("filename is required when using file_content")
+
+        # Extension checks only make sense when we actually have a filename
+        # to check (file_url without a filename override derives its own
+        # name from the URL at fetch time, so there's nothing to validate here).
+        if filename:
+            ext = os.path.splitext(filename)[1].lower()
+            if ext not in LIGHTRAG_SUPPORTED_EXTENSIONS:
+                raise LightRAGValidationError(
+                    f"Unsupported file type '{ext}'. LightRAG accepts: "
+                    f"{sorted(LIGHTRAG_SUPPORTED_EXTENSIONS)}"
+                )
+            if text_content and ext in LIGHTRAG_BINARY_ONLY_EXTENSIONS:
+                raise LightRAGValidationError(
+                    f"text_content can't be used for '{ext}' — LightRAG needs the "
+                    f"actual file bytes to parse this format. Use file_url, "
+                    f"file_path, or file_content (base64) instead."
+                )
 
     elif tool_name == "get_documents_paginated":
         page = arguments.get("page", 1)
@@ -354,37 +405,49 @@ async def handle_list_tools() -> List[Tool]:#ListToolsResult:
         Tool(
             name="upload_document",
             description=(
-                "Upload a document to LightRAG. Three ways to provide the "
-                "file — pick based on where this MCP server actually runs "
-                "and what you have access to, not by default habit:\n"
-                "1. file_url — a public http(s) URL (e.g. an uploaded "
-                "attachment or artifact link). The MCP SERVER fetches it "
-                "itself. Best option when you have one: nothing about the "
-                "file passes through your context or output tokens, and it "
-                "works no matter where the server runs.\n"
-                "2. file_path — a path on the MCP SERVER's own filesystem. "
+                "Upload a document to LightRAG. Four ways to provide the "
+                "file — pick based on the file's format and what you have "
+                "access to, not by default habit:\n"
+                "1. text_content + filename — PREFERRED for text/markdown/"
+                "code documents (.md, .txt, .html, .csv, .json, .py, etc. — "
+                "anything that isn't .pdf/.docx/.pptx/.xlsx). Just the raw "
+                "UTF-8 text itself, no encoding of any kind. Works from any "
+                "environment, including remote/cloud/sandboxed agents, "
+                "with no token overhead and no risk of tripping "
+                "content-safety classifiers the way a large base64 blob "
+                "can.\n"
+                "2. file_url — a public http(s) URL (e.g. an uploaded "
+                "attachment or artifact link), for binary formats. The MCP "
+                "SERVER fetches it itself: nothing about the file passes "
+                "through your context or output tokens, and it works no "
+                "matter where the server runs.\n"
+                "3. file_path — a path on the MCP SERVER's own filesystem. "
                 "Use ONLY when you've confirmed the server runs on the same "
                 "machine you do (local/same-host deployments). Free like "
                 "file_url, but fails with 'File does not exist' otherwise.\n"
-                "3. file_content (base64) + filename — last resort, for "
-                "remote/hosted servers when you have no URL for the file. "
-                "Produce the base64 with a deterministic tool/script call "
-                "(e.g. a shell `base64` command, or equivalent code "
-                "execution) that returns the encoded string directly into "
-                "the tool argument — do NOT compute or transcribe the "
-                "base64 yourself token by token as part of your own "
-                "reasoning. Besides wasting output tokens on anything but a "
-                "trivially small file, a large inline base64 blob can also "
-                "trip content-safety classifiers that flag it as "
-                "obfuscated data — prefer file_url or file_path whenever "
-                "either is available."
+                "4. file_content (base64) + filename — last resort, for "
+                "binary formats (.pdf/.docx/.pptx/.xlsx) on remote/hosted "
+                "servers when you have no URL for the file. Produce the "
+                "base64 with a deterministic tool/script call (e.g. a "
+                "shell `base64` command, or equivalent code execution) that "
+                "returns the encoded string directly into the tool "
+                "argument — do NOT compute or transcribe the base64 "
+                "yourself token by token as part of your own reasoning. "
+                "Besides wasting output tokens on anything but a trivially "
+                "small file, a large inline base64 blob can also trip "
+                "content-safety classifiers that flag it as obfuscated "
+                "data."
             ),
             inputSchema={
                 "type": "object",
                 "properties": {
+                    "text_content": {
+                        "type": "string",
+                        "description": "PREFERRED for text/markdown/code files. Raw UTF-8 text, no encoding needed. Use together with filename. Not valid for .pdf/.docx/.pptx/.xlsx — those need real file bytes (file_url/file_path/file_content)."
+                    },
                     "file_url": {
                         "type": "string",
-                        "description": "Public http(s) URL to fetch the file from — the MCP server downloads it directly. Best option when available. Optionally pair with filename to override the name derived from the URL."
+                        "description": "Public http(s) URL to fetch the file from — the MCP server downloads it directly. Best option for binary formats when available. Optionally pair with filename to override the name derived from the URL."
                     },
                     "file_path": {
                         "type": "string",
@@ -392,11 +455,11 @@ async def handle_list_tools() -> List[Tool]:#ListToolsResult:
                     },
                     "file_content": {
                         "type": "string",
-                        "description": "Last resort. The file's bytes, base64-encoded — produced by a script/tool call, not typed out manually. Use together with filename."
+                        "description": "Last resort, for binary formats (.pdf/.docx/.pptx/.xlsx). The file's bytes, base64-encoded — produced by a script/tool call, not typed out manually. Use together with filename."
                     },
                     "filename": {
                         "type": "string",
-                        "description": "Filename to store it as, e.g. 'report.pdf'. Required with file_content; optional override for file_url."
+                        "description": "Filename to store it as, e.g. 'report.pdf' or 'notes.md'. Required with text_content or file_content; optional override for file_url."
                     }
                 },
                 "required": []
@@ -1056,13 +1119,17 @@ async def handle_call_tool(self, request: CallToolRequest) -> dict:
             logger.info(f"  - Client base_url: {lightrag_client.base_url}")
             logger.info(f"  - Raw arguments keys: {list(arguments.keys())}")
 
+            text_content = arguments.get("text_content")
             file_url = arguments.get("file_url")
             file_content_b64 = arguments.get("file_content")
             filename = arguments.get("filename")
             file_path = arguments.get("file_path", "")
 
             try:
-                if file_url:
+                if text_content:
+                    logger.info(f"  - Using text_content, filename: '{filename}' ({len(text_content)} chars)")
+                    result = await lightrag_client.upload_document_as_text(text_content, filename)
+                elif file_url:
                     logger.info(f"  - Using file_url: '{file_url}', filename override: '{filename}'")
                     result = await lightrag_client.upload_document_from_url(file_url, filename)
                 elif file_content_b64:
@@ -1083,9 +1150,9 @@ async def handle_call_tool(self, request: CallToolRequest) -> dict:
                             f"File does not exist on the MCP server's own filesystem: {file_path}. "
                             "This path was resolved on the machine running the MCP server, not on "
                             "your (the calling agent's) machine — those are almost never the same "
-                            "for a remote/hosted MCP connection. Re-try this upload using file_url "
-                            "(if you have a public link to the file) or file_content (base64-encoded "
-                            "bytes) + filename instead of file_path."
+                            "for a remote/hosted MCP connection. Re-try this upload using "
+                            "text_content (for text/markdown/code files), file_url (if you have a "
+                            "public link), or file_content (base64-encoded bytes) instead of file_path."
                         )
                     file_size = os.path.getsize(file_path)
                     logger.info(f"  - File size: {file_size} bytes, readable: {os.access(file_path, os.R_OK)}")
