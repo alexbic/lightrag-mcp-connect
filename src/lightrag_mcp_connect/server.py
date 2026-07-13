@@ -367,13 +367,17 @@ async def handle_list_tools() -> List[Tool]:#ListToolsResult:
     tools.extend([
         Tool(
             name="insert_text",
-            description="Insert text content into LightRAG",
+            description="Insert text content into LightRAG. Optionally set a filename via `filename` — LightRAG rejects the insert with status=\"duplicated\" if that name is already taken, instead of silently overwriting or creating a second document under the same name.",
             inputSchema={
                 "type": "object",
                 "properties": {
                     "text": {
                         "type": "string",
                         "description": "Text content to insert"
+                    },
+                    "filename": {
+                        "type": "string",
+                        "description": "Filename to store this as (becomes LightRAG's file_source, used for dedup-by-name and citations). Without it, LightRAG falls back to a generic name — prefer setting this explicitly, especially the workspace-prefixed convention (`<workspace>__<description>.md`)."
                     }
                 },
                 "required": ["text"]
@@ -390,7 +394,7 @@ async def handle_list_tools() -> List[Tool]:#ListToolsResult:
                         "items": {
                             "type": "object",
                             "properties": {
-                                "title": {"type": "string"},
+                                "filename": {"type": "string"},
                                 "content": {"type": "string"},
                                 "metadata": {"type": "object"}
                             },
@@ -1019,20 +1023,22 @@ async def handle_call_tool(self, request: CallToolRequest) -> dict:
             logger.info(f"  - Raw arguments: {arguments}")
             
             text = arguments.get("text", "")
+            filename = arguments.get("filename")
             logger.info(f"INSERT_TEXT PARAMETERS:")
             logger.info(f"  - text: '{text[:100]}{'...' if len(text) > 100 else ''}' (length: {len(text)})")
             logger.info(f"  - text type: {type(text)}")
-            
+            logger.info(f"  - filename: {filename!r}")
+
             if not text or not text.strip():
                 logger.error("INSERT_TEXT VALIDATION ERROR:")
                 logger.error("  - Text is empty or whitespace only")
                 raise LightRAGValidationError("Text cannot be empty")
-            
+
             logger.info("  - Parameter validation passed")
             logger.info("  - Calling lightrag_client.insert_text()...")
-            
+
             try:
-                result = await lightrag_client.insert_text(text)
+                result = await lightrag_client.insert_text(text, filename=filename)
                 logger.info("INSERT_TEXT SUCCESS:")
                 logger.info(f"  - Result type: {type(result)}")
                 logger.info(f"  - Result content: {repr(result)}")

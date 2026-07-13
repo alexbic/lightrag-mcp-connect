@@ -36,7 +36,7 @@ class PipelineStatus(str, Enum):
 # Common Models
 class TextDocument(BaseModel):
     """Text document model."""
-    title: Optional[str] = None
+    filename: Optional[str] = None
     content: str = Field(..., description="Document content")
     metadata: Optional[Dict[str, Any]] = None
 

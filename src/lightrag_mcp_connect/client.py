@@ -259,12 +259,18 @@ class LightRAGClient:
     
     # Document Management Methods (8 methods)
     
-    async def insert_text(self, text: str, title: Optional[str] = None) -> InsertResponse:
+    async def insert_text(self, text: str, filename: Optional[str] = None) -> InsertResponse:
         """Insert text content into LightRAG."""
-        self.logger.info(f"Inserting text document with title: {title}")
+        self.logger.info(f"Inserting text document with filename: {filename}")
         try:
-            # Use title as file_source if provided, otherwise use generic name
-            file_source = f"{title}.txt" if title else "text_input.txt"
+            # Use filename as file_source if provided (as-is if it already has an
+            # extension, e.g. "workspace__notes.md" — don't mangle it into
+            # "workspace__notes.md.txt"); fall back to a generic name only
+            # when no filename was given at all.
+            if filename:
+                file_source = filename if "." in filename else f"{filename}.txt"
+            else:
+                file_source = "text_input.txt"
             request_data = InsertTextRequest(text=text, file_source=file_source)
             response_data = await self._make_request("POST", "/documents/text", request_data.model_dump())
             result = InsertResponse(**response_data)
@@ -281,22 +287,31 @@ class LightRAGClient:
     
     async def insert_texts(self, texts: List[TextDocument]) -> InsertResponse:
         """Insert multiple text documents into LightRAG."""
-        # Convert TextDocument objects to strings (content only)
+        # Convert TextDocument objects to (content, filename) pairs
         text_strings = []
+        filenames = []
         for doc in texts:
             if isinstance(doc, dict):
                 # Handle dict input from tests
                 text_strings.append(doc.get('content', str(doc)))
+                filenames.append(doc.get('filename'))
             elif hasattr(doc, 'content'):
                 # Handle TextDocument objects
                 text_strings.append(doc.content)
+                filenames.append(getattr(doc, 'filename', None))
             else:
                 # Handle string input
                 text_strings.append(str(doc))
-        
-        # Create file sources for each text (use generic names to avoid null file_path)
-        file_sources = [f"text_input_{i+1}.txt" for i in range(len(text_strings))]
-        
+                filenames.append(None)
+
+        # Use each doc's filename as file_source when given (as-is if it already
+        # has an extension, otherwise .txt-suffixed); fall back to a generic
+        # per-index name only when no filename was provided for that item.
+        file_sources = [
+            (filename if "." in filename else f"{filename}.txt") if filename else f"text_input_{i+1}.txt"
+            for i, filename in enumerate(filenames)
+        ]
+
         request_data = InsertTextsRequest(texts=text_strings, file_sources=file_sources)
         response_data = await self._make_request("POST", "/documents/texts", request_data.model_dump())
         return InsertResponse(**response_data)
