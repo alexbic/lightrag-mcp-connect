@@ -171,10 +171,15 @@ class UploadResponse(BaseModel):
 class DocumentInfo(BaseModel):
     """Document information model."""
     id: str = Field(..., description="Document ID")
-    title: Optional[str] = None
+    file_path: Optional[str] = Field(None, description="Original filename/path, as stored via file_source")
+    content_summary: Optional[str] = Field(None, description="Preview of the document's content")
+    content_length: Optional[int] = None
     status: DocStatus = Field(..., description="Document status")
     created_at: Optional[str] = None
     updated_at: Optional[str] = None
+    track_id: Optional[str] = None
+    chunks_count: Optional[int] = None
+    error_msg: Optional[str] = None
     metadata: Optional[Dict[str, Any]] = None
 
 
