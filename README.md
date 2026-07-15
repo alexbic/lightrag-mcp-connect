@@ -40,8 +40,8 @@ moment you actually use it:
    invisible on local stdio (same machine), but once the calling agent
    and the server are different machines (the entire point of remote
    access), it just fails with `File does not exist`, no exceptions.
-   This fork adds `text_content` (raw text, no encoding), `file_url`
-   (the server fetches it), and `file_content` (base64) as
+   This fork adds `text_content` (raw text, no encoding) and `file_url`
+   (the server fetches it) as
    alternatives — so uploading documents actually works remotely, not
    just querying what's already there. See "What's fixed here vs.
    upstream" below for the details.
@@ -113,15 +113,12 @@ This fork adds two alternatives:
   against SSRF: requests to private, loopback, link-local, and reserved
   addresses (including the cloud metadata endpoint) are rejected before
   any connection is attempted, and fetches are capped at 50MB.
-- **`file_content`** (base64) + `filename` — for when there's no URL.
-  The content travels inside the tool call itself, no shared filesystem
-  needed. Should be produced by a script/tool call (e.g. a shell `base64`
-  command), not the model transcribing it token by token — besides the
-  token cost, a large inline base64 blob can also trip content-safety
-  classifiers that flag it as obfuscated data.
+- **`filename` + `text_content`** — raw UTF-8 text sent directly in the
+  tool call, without a shared filesystem or base64 encoding.
 
-`file_path` is kept for same-machine / local-stdio setups, where it's
-free (the server reads the file directly, nothing to fetch or encode).
+`file_path` is kept for same-machine / local-stdio setups, but is disabled
+unless `LIGHTRAG_FILE_PATH_ROOT` names an allowed directory. Resolved paths
+(including symlinks) must stay inside that root.
 
 ```jsonc
 // Before (only works if the MCP server can read this path itself):
@@ -129,7 +126,7 @@ free (the server reads the file directly, nothing to fetch or encode).
 
 // After — pick whichever applies, in this order of preference:
 { "file_url": "https://example.com/report.pdf" }
-{ "file_content": "<base64 bytes>", "filename": "report.pdf" }
+{ "filename": "notes.md", "text_content": "Full document text" }
 ```
 
 ## Architecture
@@ -169,12 +166,13 @@ at this package via [`uv`](https://docs.astral.sh/uv/)'s `uvx`:
       "command": "uvx",
       "args": [
         "--from",
-        "git+https://github.com/alexbic/lightrag-mcp-connect.git@v1.0.0",
+        "git+https://github.com/alexbic/lightrag-mcp-connect.git@v1.1.0",
         "lightrag-mcp-connect"
       ],
       "env": {
         "LIGHTRAG_BASE_URL": "http://localhost:9621",
-        "LIGHTRAG_API_KEY": "your-lightrag-api-key"
+        "LIGHTRAG_API_KEY": "your-lightrag-api-key",
+        "LIGHTRAG_FILE_PATH_ROOT": "/Users/you/Documents"
       }
     }
   }
@@ -184,13 +182,12 @@ at this package via [`uv`](https://docs.astral.sh/uv/)'s `uvx`:
 `uvx` installs `uv` once (`curl -LsSf https://astral.sh/uv/install.sh |
 sh`), then fetches this package into an isolated, cached environment on
 first run — no manual clone or `pip install` step, ever. Running this
-way also gets you `file_path` support for free: the MCP server reads
-files directly off your disk, since it's the same machine as the tool
-calling it.
+way can also use `file_path`: set `LIGHTRAG_FILE_PATH_ROOT` to the narrowest
+directory the MCP server should be allowed to read.
 
-The URL above pins the latest stable release (`@v1.0.0` — see
+The URL above pins the latest stable release (`@v1.1.0` — see
 [Releases](https://github.com/alexbic/lightrag-mcp-connect/releases)
-for what's available). Drop the `@v1.0.0` entirely to always track
+for what's available). Drop the `@v1.1.0` entirely to always track
 `main` instead, or replace it with a commit SHA if you need to pin
 something more specific.
 
@@ -257,12 +254,13 @@ different server names, in the same MCP client:
       "command": "uvx",
       "args": [
         "--from",
-        "git+https://github.com/alexbic/lightrag-mcp-connect.git@v1.0.0",
+        "git+https://github.com/alexbic/lightrag-mcp-connect.git@v1.1.0",
         "lightrag-mcp-connect"
       ],
       "env": {
         "LIGHTRAG_BASE_URL": "http://localhost:9621",
-        "LIGHTRAG_API_KEY": "your-lightrag-api-key"
+        "LIGHTRAG_API_KEY": "your-lightrag-api-key",
+        "LIGHTRAG_FILE_PATH_ROOT": "/Users/you/Documents"
       }
     }
   }
@@ -279,9 +277,34 @@ transports (stdio vs. streamable-HTTP-over-OAuth) pointed at it.
 
 ## Tools
 
-20 tools are exposed via `tools/list` — document management (insert,
-upload, scan, retrieve, delete), querying (regular + streaming), knowledge
+19 tools are exposed via `tools/list` — document management (upload,
+upload, scan, retrieve, delete), querying, knowledge
 graph (entities, relations, labels), and system status.
+
+Text document mutations have explicit semantics:
+
+- `upload_document(file_path)`, `upload_document(file_url)`, or
+  `upload_document(filename, text_content)` creates a new document.
+- `update_document(file_path)`, `update_document(file_url)`, or
+  `update_document(filename, text_content)` completely replaces the existing
+  document with the derived or explicit filename.
+  LightRAG has no atomic update endpoint, so the MCP waits for the official
+  asynchronous delete/rebuild lifecycle and then inserts the replacement.
+- `append_text` appends text to the exact source and performs the same full
+  reindex. It is available for text documents whose source is managed by this
+  MCP server. For an older/external document, call `update_document` once with
+  its complete content before appending.
+
+Exact source text used by `append_text` is stored in a small SQLite mirror.
+Local mode defaults to `~/.local/share/lightrag-mcp-connect/content.sqlite3`;
+override it with `LIGHTRAG_MCP_CONTENT_DB`. The provided remote Compose files
+mount a persistent volume at `/data/content.sqlite3` because supergateway's
+stateless mode starts a fresh MCP child process for each request.
+
+The former `query_text_stream` compatibility handler is no longer advertised:
+MCP tool calls return a single final result, so it buffered the entire upstream
+stream and provided neither lower latency nor bounded memory. Older direct
+callers are capped by `LIGHTRAG_MCP_MAX_STREAM_BYTES` (10MB by default).
 
 Two more (`clear_documents`, `clear_cache`) are implemented upstream but
 commented out of the `tools/list` declaration, so no conforming MCP client
@@ -291,13 +314,16 @@ changed in this fork; noted here so it isn't a surprise.
 
 ## Security notes
 
-- `upload_document`'s `file_url` makes the MCP server fetch a URL the
-  caller supplies. It rejects private/loopback/link-local/reserved
-  addresses (including the cloud metadata endpoint) before connecting,
-  and caps fetches at 50MB — a baseline SSRF defense, not a complete one
-  (it doesn't protect against DNS rebinding between the check and the
-  request). Anyone with a valid OAuth token can use it to make your
-  server issue outbound HTTP requests to arbitrary public URLs.
+- `upload_document`'s `file_url` validates the initial URL and every redirect,
+  rejects credentials and non-public resolved addresses, limits redirects to
+  five, and caps fetches at 50MB. DNS rebinding between validation and connect
+  remains a deployment-level risk; restrict container egress when possible.
+- `file_path` is disabled unless `LIGHTRAG_FILE_PATH_ROOT` is configured and
+  resolved paths are confined to that directory. Do not set it in remote
+  deployments unless server-side file access is intentionally required.
+- Logs never intentionally contain environment values, tool payloads, document
+  bodies, queries, or response bodies. Set `LIGHTRAG_MCP_LOG_LEVEL` to control
+  verbosity without enabling payload logging.
 - Destructive tools (`delete_document`, `delete_entity`, `delete_relation`,
   `update_entity`, `update_relation`) are active and reachable by anyone
   holding a valid OAuth token for your instance. Neither `supergateway`

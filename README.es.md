@@ -46,7 +46,7 @@ rompe en el momento en que realmente lo usas:
    (que es todo el sentido del acceso remoto), simplemente falla con
    `File does not exist`, sin excepciones. Este fork agrega
    `text_content` (texto crudo, sin codificar), `file_url` (el servidor
-   lo obtiene él mismo) y `file_content` (base64) como alternativas —
+   lo obtiene él mismo) como alternativas —
    así que subir documentos realmente funciona en remoto, no solo
    consultar lo que ya existe. Ver "Qué se arregló aquí frente al
    upstream" más abajo para los detalles.
@@ -128,18 +128,12 @@ Este fork agrega dos alternativas:
   reservadas (incluido el endpoint de metadatos de la nube) se rechazan
   antes de intentar cualquier conexión, y las descargas están limitadas
   a 50MB.
-- **`file_content`** (base64) + `filename` — cuando no hay URL. El
-  contenido viaja dentro de la propia llamada a la herramienta, sin
-  necesidad de sistema de archivos compartido. Debería generarse con una
-  llamada a un script/herramienta (por ejemplo, el comando `base64` de
-  shell), no transcrito token por token por el modelo — además del costo
-  en tokens, un bloque base64 grande incrustado también puede activar
-  falsos positivos en clasificadores de seguridad de contenido, que lo
-  interpretan como datos ofuscados.
+- **`filename` + `text_content`** — texto UTF-8 sin procesar dentro de la
+  llamada, sin filesystem compartido ni base64.
 
-`file_path` se mantiene para configuraciones de stdio local / misma
-máquina, donde es gratis (el servidor lee el archivo directamente, sin
-nada que descargar o codificar).
+`file_path` se mantiene para stdio local, pero está deshabilitado hasta que
+`LIGHTRAG_FILE_PATH_ROOT` señale un directorio permitido. Las rutas resueltas,
+incluidos los enlaces simbólicos, deben permanecer dentro de ese directorio.
 
 ```jsonc
 // Antes (solo funciona si el servidor MCP puede leer esta ruta él mismo):
@@ -147,7 +141,7 @@ nada que descargar o codificar).
 
 // Después — elige la que aplique, en este orden de preferencia:
 { "file_url": "https://example.com/report.pdf" }
-{ "file_content": "<base64 bytes>", "filename": "report.pdf" }
+{ "filename": "notes.md", "text_content": "Texto completo" }
 ```
 
 ## Arquitectura
@@ -188,7 +182,7 @@ Apunta un cliente MCP directamente a este paquete vía
       "command": "uvx",
       "args": [
         "--from",
-        "git+https://github.com/alexbic/lightrag-mcp-connect.git@v1.0.0",
+        "git+https://github.com/alexbic/lightrag-mcp-connect.git@v1.1.0",
         "lightrag-mcp-connect"
       ],
       "env": {
@@ -207,9 +201,9 @@ así también obtienes soporte de `file_path` gratis: el servidor MCP lee
 los archivos directamente desde tu disco, ya que es la misma máquina que
 la herramienta que llama.
 
-La URL de arriba fija la última versión estable (`@v1.0.0` — ver
+La URL de arriba fija la última versión estable (`@v1.1.0` — ver
 [Releases](https://github.com/alexbic/lightrag-mcp-connect/releases)
-para ver qué hay disponible). Quita `@v1.0.0` por completo para seguir
+para ver qué hay disponible). Quita `@v1.1.0` por completo para seguir
 siempre `main`, o reemplázalo con un SHA de commit si necesitas algo
 más específico.
 
@@ -278,7 +272,7 @@ cliente MCP:
       "command": "uvx",
       "args": [
         "--from",
-        "git+https://github.com/alexbic/lightrag-mcp-connect.git@v1.0.0",
+        "git+https://github.com/alexbic/lightrag-mcp-connect.git@v1.1.0",
         "lightrag-mcp-connect"
       ],
       "env": {
@@ -301,7 +295,7 @@ apuntando a ella.
 
 ## Herramientas
 
-Se exponen 20 herramientas vía `tools/list` — gestión de documentos
+Se exponen 19 herramientas vía `tools/list` — gestión de documentos
 (insertar, subir, escanear, recuperar, eliminar), consultas (normales y
 en streaming), grafo de conocimiento (entidades, relaciones, etiquetas) y
 estado del sistema.

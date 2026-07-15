@@ -11,12 +11,12 @@ from .server import server
 from .models import *
 
 __all__ = [
-    "LightRAGClient", 
-    "LightRAGError", 
+    "LightRAGClient",
+    "LightRAGError",
     "server",
     # Enums
     "DocStatus",
-    "QueryMode", 
+    "QueryMode",
     "PipelineStatus",
     # Common models
     "TextDocument",
@@ -25,7 +25,7 @@ __all__ = [
     "HTTPValidationError",
     # Request models
     "InsertTextRequest",
-    "InsertTextsRequest", 
+    "InsertTextsRequest",
     "DeleteDocRequest",
     "DeleteEntityRequest",
     "DeleteRelationRequest",
@@ -40,6 +40,8 @@ __all__ = [
     "InsertResponse",
     "ScanResponse",
     "UploadResponse",
+    "UpdateDocumentResponse",
+    "AppendTextResponse",
     "DocumentInfo",
     "DocumentsResponse",
     "PaginatedDocsResponse",
