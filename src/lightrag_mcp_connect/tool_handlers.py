@@ -64,33 +64,10 @@ class DocumentIdArguments(ToolArguments):
     document_id: str = Field(min_length=1)
 
 
-class EntityIdArguments(ToolArguments):
-    entity_id: str = Field(min_length=1)
-
-
 class QueryArguments(ToolArguments):
     query: str = Field(min_length=1)
     mode: str = Field(default="hybrid", pattern="^(naive|local|global|hybrid|mix)$")
     only_need_context: bool = False
-
-
-class EntityNameArguments(ToolArguments):
-    entity_name: str = Field(min_length=1)
-
-
-class UpdateEntityArguments(ToolArguments):
-    entity_id: str = Field(min_length=1)
-    properties: Dict[str, Any]
-
-
-class UpdateRelationArguments(ToolArguments):
-    source_id: str = Field(min_length=1)
-    target_id: str = Field(min_length=1)
-    updated_data: Dict[str, Any]
-
-
-class RelationIdArguments(ToolArguments):
-    relation_id: str = Field(min_length=1)
 
 
 class TrackIdArguments(ToolArguments):
@@ -270,64 +247,6 @@ async def append_text(
 async def query_text(arguments: Dict[str, Any], client: LightRAGClient) -> ToolResult:
     args = QueryArguments.model_validate(arguments)
     return await client.query_text(args.query, args.mode, args.only_need_context)
-
-
-@tool_handler("get_knowledge_graph")
-async def get_knowledge_graph(
-    arguments: Dict[str, Any], client: LightRAGClient
-) -> ToolResult:
-    EmptyArguments.model_validate(arguments)
-    return await client.get_knowledge_graph()
-
-
-@tool_handler("get_graph_labels")
-async def get_graph_labels(
-    arguments: Dict[str, Any], client: LightRAGClient
-) -> ToolResult:
-    EmptyArguments.model_validate(arguments)
-    return await client.get_graph_labels()
-
-
-@tool_handler("check_entity_exists")
-async def check_entity_exists(
-    arguments: Dict[str, Any], client: LightRAGClient
-) -> ToolResult:
-    args = EntityNameArguments.model_validate(arguments)
-    return await client.check_entity_exists(args.entity_name)
-
-
-@tool_handler("update_entity")
-async def update_entity(
-    arguments: Dict[str, Any], client: LightRAGClient
-) -> ToolResult:
-    args = UpdateEntityArguments.model_validate(arguments)
-    return await client.update_entity(args.entity_id, args.properties)
-
-
-@tool_handler("update_relation")
-async def update_relation(
-    arguments: Dict[str, Any], client: LightRAGClient
-) -> ToolResult:
-    args = UpdateRelationArguments.model_validate(arguments)
-    return await client.update_relation(
-        args.source_id, args.target_id, args.updated_data
-    )
-
-
-@tool_handler("delete_entity")
-async def delete_entity(
-    arguments: Dict[str, Any], client: LightRAGClient
-) -> ToolResult:
-    args = EntityIdArguments.model_validate(arguments)
-    return await client.delete_entity(args.entity_id)
-
-
-@tool_handler("delete_relation")
-async def delete_relation(
-    arguments: Dict[str, Any], client: LightRAGClient
-) -> ToolResult:
-    args = RelationIdArguments.model_validate(arguments)
-    return await client.delete_relation(args.relation_id)
 
 
 @tool_handler("get_pipeline_status")

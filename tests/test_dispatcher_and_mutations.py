@@ -29,6 +29,18 @@ async def test_advertised_tools_have_registered_handlers() -> None:
     advertised = {tool.name for tool in tools}
     assert advertised == set(TOOL_HANDLERS)
     assert not {"insert_text", "insert_texts"} & advertised
+    assert (
+        not {
+            "get_knowledge_graph",
+            "get_graph_labels",
+            "check_entity_exists",
+            "update_entity",
+            "update_relation",
+            "delete_entity",
+            "delete_relation",
+        }
+        & advertised
+    )
     for name in ("upload_document", "update_document", "append_text"):
         schema = next(tool.inputSchema for tool in tools if tool.name == name)
         assert next(iter(schema["properties"])) == "filename"
@@ -37,6 +49,12 @@ async def test_advertised_tools_have_registered_handlers() -> None:
 @pytest.mark.asyncio
 async def test_unknown_tool_is_a_real_mcp_error() -> None:
     result = await handle_call_tool_refactored("insert_text", {})
+    assert result.isError is True
+
+
+@pytest.mark.asyncio
+async def test_unadvertised_graph_tool_cannot_be_called() -> None:
+    result = await handle_call_tool_refactored("delete_entity", {"entity_id": "x"})
     assert result.isError is True
 
 

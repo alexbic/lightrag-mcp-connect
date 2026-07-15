@@ -177,11 +177,6 @@ def _validate_tool_arguments(tool_name: str, arguments: Dict[str, Any]) -> None:
         "delete_document": ["document_id"],
         "query_text": ["query"],
         "query_text_stream": ["query"],
-        "check_entity_exists": ["entity_name"],
-        "update_entity": ["entity_id", "properties"],
-        "update_relation": ["source_id", "target_id", "updated_data"],
-        "delete_entity": ["entity_id"],
-        "delete_relation": ["relation_id"],
         "get_track_status": ["track_id"],
     }
 
@@ -629,123 +624,7 @@ async def handle_list_tools() -> List[Tool]:  # ListToolsResult:
         ]
     )
 
-    # Knowledge Graph Tools (7 tools)
-    tools.extend(
-        [
-            Tool(
-                name="get_knowledge_graph",
-                description="Retrieve the knowledge graph from LightRAG",
-                inputSchema={"type": "object", "properties": {}, "required": []},
-            ),
-            Tool(
-                name="get_graph_labels",
-                description="Get labels from the knowledge graph",
-                inputSchema={"type": "object", "properties": {}, "required": []},
-            ),
-            Tool(
-                name="check_entity_exists",
-                description="Check if an entity exists in the knowledge graph",
-                inputSchema={
-                    "type": "object",
-                    "properties": {
-                        "entity_name": {
-                            "type": "string",
-                            "description": "Name of the entity to check",
-                        }
-                    },
-                    "required": ["entity_name"],
-                },
-            ),
-            Tool(
-                name="update_entity",
-                description="Update an entity in the knowledge graph",
-                inputSchema={
-                    "type": "object",
-                    "properties": {
-                        "entity_id": {
-                            "type": "string",
-                            "description": "ID of the entity to update",
-                        },
-                        "properties": {
-                            "type": "object",
-                            "description": "Properties to update",
-                        },
-                    },
-                    "required": ["entity_id", "properties"],
-                },
-            ),
-            # Tool(
-            #     name="update_relation",
-            #     description="Update a relation in the knowledge graph",
-            #     inputSchema={
-            #         "type": "object",
-            #         "properties": {
-            #             "relation_id": {
-            #                 "type": "string",
-            #                 "description": "ID of the relation to update"
-            #             },
-            #             "properties": {
-            #                 "type": "object",
-            #                 "description": "Properties to update"
-            #             }
-            #         },
-            #         "required": ["relation_id", "properties"]
-            #     }
-            # ),
-            Tool(
-                name="update_relation",
-                description="Update a relation in the knowledge graph",
-                inputSchema={
-                    "type": "object",
-                    "properties": {
-                        "source_id": {
-                            "type": "string",
-                            "description": "ID of the source entity",
-                        },
-                        "target_id": {
-                            "type": "string",
-                            "description": "ID of the target entity",
-                        },
-                        "updated_data": {
-                            "type": "object",
-                            "description": "Properties to update on the relation",
-                        },
-                    },
-                    "required": ["source_id", "target_id", "updated_data"],
-                },
-            ),
-            Tool(
-                name="delete_entity",
-                description="Delete an entity from the knowledge graph",
-                inputSchema={
-                    "type": "object",
-                    "properties": {
-                        "entity_id": {
-                            "type": "string",
-                            "description": "ID of the entity to delete",
-                        }
-                    },
-                    "required": ["entity_id"],
-                },
-            ),
-            Tool(
-                name="delete_relation",
-                description="Delete a relation from the knowledge graph",
-                inputSchema={
-                    "type": "object",
-                    "properties": {
-                        "relation_id": {
-                            "type": "string",
-                            "description": "ID of the relation to delete",
-                        },
-                    },
-                    "required": ["relation_id"],
-                },
-            ),
-        ]
-    )
-
-    # System Management Tools (5 tools)
+    # System management tools
     tools.extend(
         [
             Tool(
@@ -803,6 +682,8 @@ async def handle_list_tools() -> List[Tool]:  # ListToolsResult:
             for keyword in [
                 "insert",
                 "upload",
+                "update_document",
+                "append_text",
                 "scan",
                 "get_documents",
                 "delete_document",
@@ -811,14 +692,6 @@ async def handle_list_tools() -> List[Tool]:  # ListToolsResult:
         )
     ]
     query_tools = [t for t in tools if "query" in t.name]
-    kg_tools = [
-        t
-        for t in tools
-        if any(
-            keyword in t.name
-            for keyword in ["knowledge", "graph", "entity", "relation", "labels"]
-        )
-    ]
     system_tools = [
         t
         for t in tools
@@ -834,9 +707,6 @@ async def handle_list_tools() -> List[Tool]:  # ListToolsResult:
         logger.info(f"    - {tool.name}")
     logger.info(f"  - Query Tools: {len(query_tools)}")
     for tool in query_tools:
-        logger.info(f"    - {tool.name}")
-    logger.info(f"  - Knowledge Graph Tools: {len(kg_tools)}")
-    for tool in kg_tools:
         logger.info(f"    - {tool.name}")
     logger.info(f"  - System Management Tools: {len(system_tools)}")
     for tool in system_tools:
@@ -1049,7 +919,7 @@ async def main() -> None:
             # Create initialization options
             init_options = InitializationOptions(
                 server_name="lightrag-mcp-connect",
-                server_version="1.1.0",
+                server_version="1.1.1",
                 capabilities=capabilities,
             )
             logger.info(f"INITIALIZATION OPTIONS:")

@@ -25,7 +25,7 @@ Add this server to your MCP client configuration:
       "command": "uvx",
       "args": [
         "--from",
-        "git+https://github.com/alexbic/lightrag-mcp-connect.git@v1.1.0",
+        "git+https://github.com/alexbic/lightrag-mcp-connect.git@v1.1.1",
         "lightrag-mcp-connect"
       ],
       "env": {
@@ -76,8 +76,8 @@ append_text(filename, text_content)
 an existing external document, run `update_document` once with its complete
 text before appending.
 
-LightRAG rebuilds the knowledge graph automatically after document changes.
-Graph commands are only needed for direct entity or relation management.
+LightRAG rebuilds its internal knowledge graph automatically after document
+changes. This MCP does not expose graph-management commands.
 
 ## Other commands
 
@@ -85,7 +85,6 @@ The server also provides:
 
 - document listing, status, scanning, and deletion
 - knowledge-base queries
-- graph inspection and entity/relation management
 - LightRAG health and pipeline status
 
 The obsolete `insert_text` and `insert_texts` commands are not exposed.

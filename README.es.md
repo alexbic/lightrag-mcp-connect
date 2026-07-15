@@ -25,7 +25,7 @@ Añade el servidor a la configuración de tu cliente MCP:
       "command": "uvx",
       "args": [
         "--from",
-        "git+https://github.com/alexbic/lightrag-mcp-connect.git@v1.1.0",
+        "git+https://github.com/alexbic/lightrag-mcp-connect.git@v1.1.1",
         "lightrag-mcp-connect"
       ],
       "env": {
@@ -76,9 +76,8 @@ append_text(filename, text_content)
 MCP. Para un documento externo existente, ejecuta primero `update_document` con
 su texto completo.
 
-LightRAG reconstruye automáticamente el grafo de conocimiento después de los
-cambios. Los comandos del grafo solo son necesarios para administrar entidades
-o relaciones directamente.
+LightRAG reconstruye automáticamente su grafo de conocimiento interno después
+de los cambios. Este MCP no publica comandos para administrar el grafo.
 
 ## Otros comandos
 
@@ -86,7 +85,6 @@ El servidor también permite:
 
 - listar, escanear, eliminar y consultar el estado de documentos
 - realizar consultas a la base de conocimiento
-- inspeccionar el grafo y administrar entidades y relaciones
 - consultar el estado de LightRAG y de la cola de procesamiento
 
 Los comandos obsoletos `insert_text` e `insert_texts` no se publican.
