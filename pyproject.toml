@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "lightrag-mcp-connect"
-version = "1.0.0"
+version = "1.1.0"
 description = "MCP server for LightRAG that works both locally (direct file access via uvx, zero setup) and remotely behind an OAuth gateway (see deploy/)"
 authors = [
     {name = "Daniel Simpkins"},

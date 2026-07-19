@@ -132,6 +132,74 @@ free (the server reads the file directly, nothing to fetch or encode).
 { "file_content": "<base64 bytes>", "filename": "report.pdf" }
 ```
 
+## Workspace Isolation (v1.1.0+)
+
+**NEW in v1.1.0:** Multi-tenant workspace support with automatic isolation via API keys.
+
+### MCP Workspace Case
+
+The server now supports isolated knowledge bases (workspaces) via the **MCP Workspace Case** naming convention:
+
+```json
+{
+  "*": "sk-admin-abc123",      // Admin key — access to ALL workspaces
+  "ossi": "sk-ossi-def456",    // Ossi key — access ONLY to "ossi" workspace
+  "project_x": "sk-proj-ghi789" // Project X key — access ONLY to "project_x" workspace
+}
+```
+
+### How It Works
+
+1. **API Key → Workspace Mapping** — The API key itself determines which workspace is accessed
+2. **Automatic Header Injection** — The server automatically adds `LIGHTRAG-WORKSPACE` header to LightRAG requests
+3. **Admin Mode** — Keys mapped to `"*"` access all workspaces (no workspace header sent)
+4. **Legacy Mode** — If `MCP_WORKSPACE_KEYS` is not configured, any key works as admin (backward compatible)
+
+### Configuration
+
+```bash
+# deploy/.env
+LIGHTRAG_SERVER_KEY=your-lightRAG-api-key      # MCP server → LightRAG authentication
+MCP_WORKSPACE_KEYS='{"*": "sk-admin-abc", "ossi": "sk-ossi-def"}'
+```
+
+### Client Configuration
+
+```yaml
+# ~/.hermes/config.yaml (admin profile)
+mcp:
+  servers:
+    lightrag:
+      env:
+        LIGHTRAG_API_KEY: "sk-admin-abc"  # Access all workspaces
+
+# ~/.hermes/profiles/daughter/config.yaml (Ossi's profile)
+mcp:
+  servers:
+    lightrag:
+      env:
+        LIGHTRAG_API_KEY: "sk-ossi-def"  # Access only "ossi" workspace
+```
+
+### Migration Path
+
+1. **Legacy Mode** (default) — Works exactly like v1.0.0, no changes needed
+2. **Enable Workspace Isolation** — Set `MCP_WORKSPACE_KEYS` in `.env`
+3. **Create Workspaces** — Use LightRAG API or WebUI to create isolated workspaces
+4. **Migrate Data** — Export from default workspace, import to new workspace
+
+### Security
+
+- ✅ Keys are checked against configured `MCP_WORKSPACE_KEYS` mapping
+- ✅ Invalid keys are rejected (when `MCP_WORKSPACE_KEYS` is configured)
+- ✅ Workspace isolation is enforced at the HTTP header level
+- ✅ Admin keys (`*`) can access any workspace without reconfiguration
+
+### LightRAG Server Requirements
+
+Your LightRAG instance must support workspace isolation via the `LIGHTRAG-WORKSPACE` HTTP header. Most recent versions (v1.5+) support this natively.
+
+
 ## Architecture
 
 ```
