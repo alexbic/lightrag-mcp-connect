@@ -13,11 +13,16 @@ from lightrag_mcp_connect.server import load_workspace_keys, get_workspace_from_
 def test_workspace_resolution():
     """Test workspace resolution from API keys."""
 
-    # Test 1: Load empty keys
+    # Test 1: Load empty keys (legacy mode)
     os.environ['MCP_WORKSPACE_KEYS'] = '{}'
     keys = load_workspace_keys()
     print(f"✓ Test 1: Load empty keys - {keys}")
     assert keys == {}
+    
+    # Test 1b: Legacy mode - any key returns "*" (admin)
+    workspace = get_workspace_from_key("any-key-here")
+    print(f"✓ Test 1b: Legacy mode - any key -> admin (*): {workspace}")
+    assert workspace == "*"
 
     # Test 2: Load sample keys
     sample_keys = {
@@ -45,7 +50,7 @@ def test_workspace_resolution():
     print(f"✓ Test 5: Resolve project_x key - workspace: {workspace}")
     assert workspace == "project_x"
 
-    # Test 6: Invalid key
+    # Test 6: Invalid key (when MCP_WORKSPACE_KEYS is configured)
     workspace = get_workspace_from_key("invalid-key")
     print(f"✓ Test 6: Invalid key - workspace: {workspace}")
     assert workspace is None

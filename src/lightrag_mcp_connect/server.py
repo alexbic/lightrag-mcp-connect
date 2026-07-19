@@ -77,12 +77,19 @@ def get_workspace_from_key(api_key: str) -> Optional[str]:
     Returns:
         "*" for admin (all workspaces),
         workspace name for regular users,
-        None if key is invalid
+        "*" for legacy mode (no MCP_WORKSPACE_KEYS configured),
+        None if key is invalid and MCP_WORKSPACE_KEYS is configured
     """
     global WORKSPACE_KEYS
     if not WORKSPACE_KEYS:
         WORKSPACE_KEYS = load_workspace_keys()
     
+    # Legacy mode: no workspace keys configured -> treat all keys as admin
+    if not WORKSPACE_KEYS:
+        logger.info("MCP_WORKSPACE_KEYS not configured - using legacy mode (admin access for all keys)")
+        return "*"
+    
+    # MCP Workspace Case: resolve workspace from key
     for workspace, key in WORKSPACE_KEYS.items():
         if key == api_key:
             logger.debug(f"Resolved API key to workspace: {workspace}")
@@ -1017,7 +1024,9 @@ async def handle_call_tool(self, request: CallToolRequest) -> dict:
             # Resolve workspace from API key (MCP Workspace Case)
             workspace = get_workspace_from_key(api_key) if api_key else None
             
-            if not workspace and api_key:
+            # Only reject invalid keys when MCP_WORKSPACE_KEYS is configured
+            # Legacy mode: any key works (returns "*" from get_workspace_from_key)
+            if not workspace and api_key and WORKSPACE_KEYS:
                 logger.error("AUTHORIZATION FAILED:")
                 logger.error(f"  - Invalid API key provided")
                 return _create_error_response(
