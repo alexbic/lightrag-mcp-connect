@@ -53,6 +53,47 @@ server = Server("lightrag-mcp-connect")
 # Global client instance
 lightrag_client: Optional[LightRAGClient] = None
 
+# Workspace authorization configuration (MCP Workspace Case: workspace -> api_key)
+# Format: {"*": "admin_key", "ossi": "ossi_key", "project_x": "project_x_key"}
+WORKSPACE_KEYS: Dict[str, str] = {}
+
+def load_workspace_keys() -> Dict[str, str]:
+    """Load workspace keys from MCP_WORKSPACE_KEYS environment variable."""
+    keys_json = os.getenv("MCP_WORKSPACE_KEYS", "{}")
+    try:
+        keys = json.loads(keys_json)
+        logger.info(f"Loaded {len(keys)} workspace keys")
+        return keys
+    except json.JSONDecodeError as e:
+        logger.error(f"Failed to parse MCP_WORKSPACE_KEYS: {e}")
+        return {}
+
+def get_workspace_from_key(api_key: str) -> Optional[str]:
+    """Resolve workspace from API key (MCP Workspace Case).
+    
+    Args:
+        api_key: The API key to resolve
+        
+    Returns:
+        "*" for admin (all workspaces),
+        workspace name for regular users,
+        None if key is invalid
+    """
+    global WORKSPACE_KEYS
+    if not WORKSPACE_KEYS:
+        WORKSPACE_KEYS = load_workspace_keys()
+    
+    for workspace, key in WORKSPACE_KEYS.items():
+        if key == api_key:
+            logger.debug(f"Resolved API key to workspace: {workspace}")
+            return workspace
+    
+    logger.warning(f"Invalid API key provided: {api_key[:10]}...")
+    return None
+
+# Load workspace keys at startup
+WORKSPACE_KEYS = load_workspace_keys()
+
 # LightRAG's own DocumentManager.supported_extensions is computed dynamically
 # from its registered parser engines (lightrag/parser/registry.py) — there's
 # no static constant to import across the process/container boundary, so
@@ -970,21 +1011,37 @@ async def handle_call_tool(self, request: CallToolRequest) -> dict:
             # Get configuration from environment variables
             base_url = os.getenv("LIGHTRAG_BASE_URL", "http://localhost:9621")
             api_key = os.getenv("LIGHTRAG_API_KEY", None)
+            lightrag_server_key = os.getenv("LIGHTRAG_SERVER_KEY", api_key)  # Server key (different from workspace key)
             timeout = float(os.getenv("LIGHTRAG_TIMEOUT", "30.0"))
+            
+            # Resolve workspace from API key (MCP Workspace Case)
+            workspace = get_workspace_from_key(api_key) if api_key else None
+            
+            if not workspace and api_key:
+                logger.error("AUTHORIZATION FAILED:")
+                logger.error(f"  - Invalid API key provided")
+                return _create_error_response(
+                    LightRAGAuthError("Invalid API key"),
+                    tool_name
+                )
             
             logger.info("CLIENT CONFIGURATION:")
             logger.info(f"  - base_url: {base_url}")
-            logger.info(f"  - api_key: {'***REDACTED***' if api_key else 'None'}")
+            logger.info(f"  - workspace_key: {'***REDACTED***' if api_key else 'None'}")
+            logger.info(f"  - resolved_workspace: {workspace or 'default'}")
+            logger.info(f"  - server_key: {'***REDACTED***' if lightrag_server_key else 'None'}")
             logger.info(f"  - timeout: {timeout}")
             
             lightrag_client = LightRAGClient(
                 base_url=base_url,
-                api_key=api_key,
-                timeout=timeout
+                api_key=lightrag_server_key,  # Use server key for LightRAG auth
+                timeout=timeout,
+                workspace=workspace  # Pass resolved workspace
             )
             logger.info(f"  - Client initialized successfully: {type(lightrag_client)}")
             logger.info(f"  - Client base_url: {lightrag_client.base_url}")
             logger.info(f"  - Client timeout: {lightrag_client.timeout}")
+            logger.info(f"  - Client workspace: {lightrag_client.workspace or 'default'}")
             logger.info(f"  - Client has API key: {lightrag_client.api_key is not None}")
         except Exception as e:
             logger.error(f"CLIENT INITIALIZATION FAILED:")

@@ -74,22 +74,26 @@ class LightRAGServerError(LightRAGError):
 class LightRAGClient:
     """Client for interacting with LightRAG API."""
     
-    def __init__(self, base_url: str = "http://localhost:9621", api_key: Optional[str] = None, timeout: float = 30.0):
+    def __init__(self, base_url: str = "http://localhost:9621", api_key: Optional[str] = None, 
+                 timeout: float = 30.0, workspace: Optional[str] = None):
         self.base_url = base_url.rstrip("/")
         self.api_key = api_key
         self.timeout = timeout
+        self.workspace = workspace
         self.logger = logging.getLogger(__name__)
         
         headers = {}
         if api_key:
             headers["X-API-Key"] = api_key
+        if workspace and workspace != "*":
+            headers["LIGHTRAG-WORKSPACE"] = workspace
             
         self.client = httpx.AsyncClient(
             timeout=timeout,
             headers=headers
         )
         
-        self.logger.info(f"Initialized LightRAG client with base_url: {self.base_url}")
+        self.logger.info(f"Initialized LightRAG client with base_url: {self.base_url}, workspace: {workspace or 'default'}")
     
     async def __aenter__(self):
         return self

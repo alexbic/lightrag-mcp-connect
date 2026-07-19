@@ -82,7 +82,9 @@ services:
       # a bit more latency per call, but this whole bug class can't happen.
     environment:
       - LIGHTRAG_BASE_URL=${LIGHTRAG_URL}
+      - LIGHTRAG_SERVER_KEY=${LIGHTRAG_SERVER_KEY}
       - LIGHTRAG_API_KEY=${LIGHTRAG_API_KEY}
+      - MCP_WORKSPACE_KEYS=${MCP_WORKSPACE_KEYS}
     networks:
       - lightrag-mcp-net
     restart: unless-stopped
