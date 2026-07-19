@@ -78,7 +78,7 @@ services:
     container_name: lightrag-mcp-gw
     command:
       - "--stdio"
-      - "uvx --from git+https://github.com/alexbic/lightrag-mcp-connect.git@${MCP_GIT_REF:-v1.2.0} lightrag-mcp-connect"
+      - "uvx --from git+https://github.com/alexbic/lightrag-mcp-connect.git@${MCP_GIT_REF:-v1.1.0} lightrag-mcp-connect"
       - "--outputTransport"
       - "streamableHttp"
       - "--port"
@@ -90,6 +90,9 @@ services:
     environment:
       - LIGHTRAG_BASE_URL=http://lightrag:9621
       - LIGHTRAG_API_KEY=${LIGHTRAG_API_KEY}
+      - LIGHTRAG_MCP_CONTENT_DB=/data/content.sqlite3
+    volumes:
+      - lightrag-mcp-content:/data
     networks:
       - lightrag-mcp-net
     depends_on:
@@ -120,6 +123,7 @@ volumes:
   lightrag-inputs:
   lightrag-mcp-auth-data:
   lightrag-mcp-caddy-data:
+  lightrag-mcp-content:
 
 networks:
   lightrag-mcp-net:

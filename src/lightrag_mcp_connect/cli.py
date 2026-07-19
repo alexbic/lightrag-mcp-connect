@@ -7,7 +7,7 @@ import sys
 from .server import main
 
 
-def cli():
+def cli() -> None:
     """CLI entry point."""
     try:
         asyncio.run(main())

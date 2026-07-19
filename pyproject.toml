@@ -4,29 +4,29 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "lightrag-mcp-connect"
-version = "1.2.0"
+version = "1.1.0"
 description = "MCP server for LightRAG that works both locally (direct file access via uvx, zero setup) and remotely behind an OAuth gateway (see deploy/)"
 authors = [
     {name = "Daniel Simpkins"},
     {name = "Alexander Bikmukhametov", email = "alex_bic@mac.com"}
 ]
 readme = "README.md"
-requires-python = ">=3.8"
+license = "MIT"
+requires-python = ">=3.10"
 classifiers = [
     "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Developers",
-    "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.8",
-    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
 ]
 dependencies = [
-    "mcp>=1.2.0",
-    "httpx>=0.24.0",
-    "pydantic>=2.0.0",
-    "anyio>=3.0.0",
+    "mcp>=1.2.0,<2.0.0",
+    "httpx>=0.24.0,<1.0.0",
+    "pydantic>=2.0.0,<3.0.0",
+    "anyio>=3.0.0,<5.0.0",
 ]
 
 [project.optional-dependencies]
@@ -34,6 +34,8 @@ dev = [
     "black>=23.0.0",
     "isort>=5.12.0",
     "mypy>=1.0.0",
+    "pytest>=8.0.0,<9.0.0",
+    "pytest-asyncio>=1.0.0,<2.0.0",
 ]
 
 [project.scripts]
@@ -47,14 +49,14 @@ where = ["src"]
 
 [tool.black]
 line-length = 88
-target-version = ['py38']
+target-version = ['py310']
 
 [tool.isort]
 profile = "black"
 line_length = 88
 
 [tool.mypy]
-python_version = "3.8"
+python_version = "3.10"
 warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = true

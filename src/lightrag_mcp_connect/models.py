@@ -10,8 +10,12 @@ from pydantic import BaseModel, Field
 # Enums for status types and mode parameters
 class DocStatus(str, Enum):
     """Document status enumeration."""
+
     PENDING = "pending"
+    PARSING = "parsing"
+    ANALYZING = "analyzing"
     PROCESSING = "processing"
+    PREPROCESSED = "preprocessed"
     PROCESSED = "processed"
     FAILED = "failed"
     DELETED = "deleted"
@@ -19,14 +23,17 @@ class DocStatus(str, Enum):
 
 class QueryMode(str, Enum):
     """Query mode enumeration."""
+
     NAIVE = "naive"
     LOCAL = "local"
     GLOBAL = "global"
     HYBRID = "hybrid"
+    MIX = "mix"
 
 
 class PipelineStatus(str, Enum):
     """Pipeline status enumeration."""
+
     IDLE = "idle"
     RUNNING = "running"
     COMPLETED = "completed"
@@ -36,6 +43,7 @@ class PipelineStatus(str, Enum):
 # Common Models
 class TextDocument(BaseModel):
     """Text document model."""
+
     filename: Optional[str] = None
     content: str = Field(..., description="Document content")
     metadata: Optional[Dict[str, Any]] = None
@@ -43,6 +51,7 @@ class TextDocument(BaseModel):
 
 class PaginationInfo(BaseModel):
     """Pagination information model."""
+
     page: int = Field(..., description="Page number")
     page_size: int = Field(..., description="Number of items per page")
     total_count: int = Field(..., description="Total number of items")
@@ -53,6 +62,7 @@ class PaginationInfo(BaseModel):
 
 class ValidationError(BaseModel):
     """Validation error model."""
+
     loc: List[Union[str, int]]
     msg: str
     type: str
@@ -60,35 +70,45 @@ class ValidationError(BaseModel):
 
 class HTTPValidationError(BaseModel):
     """HTTP validation error model."""
+
     detail: List[ValidationError]
 
 
 # Document Management Request Models
 class InsertTextRequest(BaseModel):
     """Request model for inserting a single text document."""
+
     text: str = Field(..., description="Text content to insert")
-    file_source: str = Field(default="text_input.txt", description="Source file name for the text")
+    file_source: str = Field(
+        default="text_input.txt", description="Source file name for the text"
+    )
 
 
 class InsertTextsRequest(BaseModel):
     """Request model for inserting multiple text documents."""
+
     texts: List[str] = Field(..., description="List of text strings to insert")
-    file_sources: List[str] = Field(default_factory=list, description="List of file sources for the texts")
+    file_sources: List[str] = Field(
+        default_factory=list, description="List of file sources for the texts"
+    )
 
 
 class DeleteDocRequest(BaseModel):
     """Request model for deleting a document by ID."""
+
     doc_ids: List[str] = Field(..., description="List of document IDs to delete")
 
 
 class DeleteEntityRequest(BaseModel):
     """Request model for deleting an entity."""
+
     entity_id: str = Field(..., description="ID of the entity to delete")
     entity_name: str = Field(..., description="Name of the entity to delete")
 
 
 class DeleteRelationRequest(BaseModel):
     """Request model for deleting a relation."""
+
     relation_id: str = Field(..., description="ID of the relation to delete")
     source_entity: str = Field(..., description="Source entity name")
     target_entity: str = Field(..., description="Target entity name")
@@ -96,6 +116,7 @@ class DeleteRelationRequest(BaseModel):
 
 class DocumentsRequest(BaseModel):
     """Request model for paginated documents."""
+
     page: int = Field(1, ge=1, description="Page number")
     page_size: int = Field(10, ge=1, le=100, description="Number of items per page")
     status_filter: Optional[DocStatus] = None
@@ -103,12 +124,14 @@ class DocumentsRequest(BaseModel):
 
 class ClearCacheRequest(BaseModel):
     """Request model for clearing cache."""
+
     cache_type: Optional[str] = None
 
 
 # Query Request Models
 class QueryRequest(BaseModel):
     """Request model for text queries."""
+
     query: str = Field(..., description="Query text")
     mode: QueryMode = Field(QueryMode.HYBRID, description="Query mode")
     only_need_context: bool = Field(False, description="Whether to only return context")
@@ -118,6 +141,7 @@ class QueryRequest(BaseModel):
 # Knowledge Graph Request Models
 class EntityUpdateRequest(BaseModel):
     """Request model for updating an entity."""
+
     entity_id: str = Field(..., description="ID of the entity to update")
     entity_name: str = Field(..., description="Name of the entity to update")
     updated_data: Dict[str, Any] = Field(..., description="Updated data for the entity")
@@ -125,20 +149,25 @@ class EntityUpdateRequest(BaseModel):
 
 class RelationUpdateRequest(BaseModel):
     """Request model for updating a relation."""
+
     # relation_id: str = Field(..., description="ID of the relation to update")
     source_id: str = Field(..., description="Source entity ID")
     target_id: str = Field(..., description="Target entity ID")
-    updated_data: Dict[str, Any] = Field(..., description="Updated data for the relation")
+    updated_data: Dict[str, Any] = Field(
+        ..., description="Updated data for the relation"
+    )
 
 
 class EntityExistsRequest(BaseModel):
     """Request model for checking if entity exists."""
+
     entity_name: str = Field(..., description="Name of the entity to check")
 
 
 # Authentication Request Models
 class LoginRequest(BaseModel):
     """Request model for login."""
+
     username: str = Field(..., description="Username")
     password: str = Field(..., description="Password")
 
@@ -146,6 +175,7 @@ class LoginRequest(BaseModel):
 # Document Management Response Models
 class InsertResponse(BaseModel):
     """Response model for document insertion."""
+
     status: str = Field(..., description="Insertion status")
     message: str = Field(..., description="Status message")
     track_id: str = Field(..., description="Tracking ID for the insertion")
@@ -154,25 +184,54 @@ class InsertResponse(BaseModel):
 
 class ScanResponse(BaseModel):
     """Response model for document scanning."""
+
     status: str = Field(..., description="Scanning status")
-    message: str = Field(..., description="Status message")
+    message: Optional[str] = Field(None, description="Status message")
     track_id: str = Field(..., description="Tracking ID for the scan operation")
-    new_documents: List[str] = Field(default_factory=list, description="List of new document names")
-    message: Optional[str] = None
+    new_documents: List[str] = Field(
+        default_factory=list, description="List of new document names"
+    )
 
 
 class UploadResponse(BaseModel):
     """Response model for file upload."""
+
     status: str = Field(..., description="Upload status")
     message: Optional[str] = None
     track_id: Optional[str] = Field(None, description="Track ID for upload")
 
 
+class UpdateDocumentResponse(BaseModel):
+    """Result of replacing a text document by its filename."""
+
+    status: str
+    message: str
+    filename: str
+    deleted_doc_id: str
+    track_id: str
+
+
+class AppendTextResponse(BaseModel):
+    """Result of appending text to an MCP-managed text document."""
+
+    status: str
+    message: str
+    filename: str
+    deleted_doc_id: str
+    track_id: str
+    appended_characters: int
+
+
 class DocumentInfo(BaseModel):
     """Document information model."""
+
     id: str = Field(..., description="Document ID")
-    file_path: Optional[str] = Field(None, description="Original filename/path, as stored via file_source")
-    content_summary: Optional[str] = Field(None, description="Preview of the document's content")
+    file_path: Optional[str] = Field(
+        None, description="Original filename/path, as stored via file_source"
+    )
+    content_summary: Optional[str] = Field(
+        None, description="Preview of the document's content"
+    )
     content_length: Optional[int] = None
     status: DocStatus = Field(..., description="Document status")
     created_at: Optional[str] = None
@@ -185,18 +244,25 @@ class DocumentInfo(BaseModel):
 
 class DocumentsResponse(BaseModel):
     """Response model for retrieving documents."""
-    statuses: Dict[str, Any] = Field(default_factory=dict, description="Document statuses")
+
+    statuses: Dict[str, Any] = Field(
+        default_factory=dict, description="Document statuses"
+    )
 
 
 class PaginatedDocsResponse(BaseModel):
     """Response model for paginated documents."""
+
     documents: List[DocumentInfo] = Field(default_factory=list)
     pagination: PaginationInfo = Field(..., description="Pagination information")
-    status_counts: Dict[str, int] = Field(default_factory=dict, description="Status counts")
+    status_counts: Dict[str, int] = Field(
+        default_factory=dict, description="Status counts"
+    )
 
 
 class DeleteDocByIdResponse(BaseModel):
     """Response model for document deletion by ID."""
+
     status: str = Field(..., description="Deletion status")
     message: Optional[str] = None
     doc_id: Optional[str] = Field(None, description="ID of the deleted document")
@@ -204,12 +270,14 @@ class DeleteDocByIdResponse(BaseModel):
 
 class ClearDocumentsResponse(BaseModel):
     """Response model for clearing all documents."""
+
     status: str = Field(..., description="Clearing status")
     message: Optional[str] = None
 
 
 class PipelineStatusResponse(BaseModel):
     """Response model for pipeline status."""
+
     autoscanned: bool = Field(..., description="Whether auto-scanning is enabled")
     busy: bool = Field(..., description="Whether pipeline is busy")
     job_name: Optional[str] = None
@@ -221,34 +289,43 @@ class PipelineStatusResponse(BaseModel):
     latest_message: Optional[str] = None
     history_messages: Optional[List[str]] = None
     update_status: Optional[Dict[str, Any]] = None
-    progress: Optional[float] = Field(None, ge=0, le=100, description="Progress percentage")
+    progress: Optional[float] = Field(
+        None, ge=0, le=100, description="Progress percentage"
+    )
     current_task: Optional[str] = None
     message: Optional[str] = None
 
 
 class TrackStatusResponse(BaseModel):
     """Response model for track status."""
+
     track_id: str = Field(..., description="Track ID")
-    documents: List[Dict[str, Any]] = Field(default_factory=list, description="Documents in track")
+    documents: List[Dict[str, Any]] = Field(
+        default_factory=list, description="Documents in track"
+    )
     total_count: int = Field(0, description="Total document count")
-    status_summary: Dict[str, Any] = Field(default_factory=dict, description="Status summary")
+    status_summary: Dict[str, Any] = Field(
+        default_factory=dict, description="Status summary"
+    )
 
 
 class StatusCountsResponse(BaseModel):
     """Response model for document status counts."""
+
     status_counts: Dict[str, int] = Field(..., description="Status counts mapping")
 
 
 class ClearCacheResponse(BaseModel):
     """Response model for cache clearing."""
+
     status: str = Field(..., description="Cache clearing status")
-    message: str = Field(..., description="Status message")
+    message: Optional[str] = Field(None, description="Status message")
     cache_type: Optional[str] = None
-    message: Optional[str] = None
 
 
 class DeletionResult(BaseModel):
     """Response model for entity/relation deletion."""
+
     deleted: bool = Field(..., description="Whether deletion was successful")
     id: str = Field(..., description="ID of the deleted item")
     type: str = Field(..., description="Type of deleted item (entity/relation)")
@@ -258,6 +335,7 @@ class DeletionResult(BaseModel):
 # Query Response Models
 class QueryResult(BaseModel):
     """Query result model."""
+
     document_id: str = Field(..., description="Document ID")
     snippet: str = Field(..., description="Text snippet")
     score: Optional[float] = Field(None, ge=0, le=1)
@@ -266,6 +344,7 @@ class QueryResult(BaseModel):
 
 class QueryResponse(BaseModel):
     """Response model for text queries."""
+
     response: str = Field(..., description="Query response text")
     query: Optional[str] = None
     results: Optional[List[QueryResult]] = None
@@ -277,6 +356,7 @@ class QueryResponse(BaseModel):
 # Knowledge Graph Response Models
 class EntityInfo(BaseModel):
     """Entity information model."""
+
     id: str = Field(..., description="Entity ID")
     name: str = Field(..., description="Entity name")
     type: Optional[str] = None
@@ -287,6 +367,7 @@ class EntityInfo(BaseModel):
 
 class RelationInfo(BaseModel):
     """Relation information model."""
+
     id: str = Field(..., description="Relation ID")
     source_entity: str = Field(..., description="Source entity ID")
     target_entity: str = Field(..., description="Target entity ID")
@@ -299,15 +380,20 @@ class RelationInfo(BaseModel):
 
 class GraphResponse(BaseModel):
     """Response model for knowledge graph."""
-    nodes: List[Dict[str, Any]] = Field(default_factory=list, description="Graph nodes (entities)")
-    edges: List[Dict[str, Any]] = Field(default_factory=list, description="Graph edges (relations)")
+
+    nodes: List[Dict[str, Any]] = Field(
+        default_factory=list, description="Graph nodes (entities)"
+    )
+    edges: List[Dict[str, Any]] = Field(
+        default_factory=list, description="Graph edges (relations)"
+    )
     is_truncated: bool = Field(False, description="Whether the graph is truncated")
-    
+
     @property
     def entities(self) -> List[Dict[str, Any]]:
         """Alias for nodes to maintain backward compatibility."""
         return self.nodes
-    
+
     @property
     def relations(self) -> List[Dict[str, Any]]:
         """Alias for edges to maintain backward compatibility."""
@@ -316,12 +402,23 @@ class GraphResponse(BaseModel):
 
 class LabelsResponse(BaseModel):
     """Response model for graph labels."""
-    entity_labels: List[str] = Field(default_factory=list)
-    relation_labels: List[str] = Field(default_factory=list)
+
+    labels: List[str] = Field(default_factory=list)
+
+    @property
+    def entity_labels(self) -> List[str]:
+        """Backward-compatible alias for LightRAG's entity-label list."""
+        return self.labels
+
+    @property
+    def relation_labels(self) -> List[str]:
+        """LightRAG does not return relation labels from this endpoint."""
+        return []
 
 
 class EntityExistsResponse(BaseModel):
     """Response model for entity existence check."""
+
     exists: bool = Field(..., description="Whether entity exists")
     entity_name: Optional[str] = None
     entity_id: Optional[str] = None
@@ -329,6 +426,7 @@ class EntityExistsResponse(BaseModel):
 
 class EntityUpdateResponse(BaseModel):
     """Response model for entity update."""
+
     status: str = Field(..., description="Update status")
     message: str = Field(..., description="Update message")
     data: Dict[str, Any] = Field(..., description="Updated entity data")
@@ -336,6 +434,7 @@ class EntityUpdateResponse(BaseModel):
 
 class RelationUpdateResponse(BaseModel):
     """Response model for relation update."""
+
     status: str = Field(..., description="Update status")
     message: str = Field(..., description="Update message")
     data: Dict[str, Any] = Field(..., description="Updated relation data")
@@ -344,6 +443,7 @@ class RelationUpdateResponse(BaseModel):
 # System Management Response Models
 class HealthResponse(BaseModel):
     """Response model for health check."""
+
     status: str = Field(..., description="Health status")
     version: Optional[str] = None
     uptime: Optional[float] = None
@@ -355,12 +455,14 @@ class HealthResponse(BaseModel):
 # Authentication Response Models
 class AuthStatusResponse(BaseModel):
     """Response model for authentication status."""
+
     authenticated: bool = Field(..., description="Whether user is authenticated")
     user: Optional[str] = None
 
 
 class LoginResponse(BaseModel):
     """Response model for login."""
+
     success: bool = Field(..., description="Whether login was successful")
     token: Optional[str] = None
     user: Optional[str] = None
@@ -370,21 +472,25 @@ class LoginResponse(BaseModel):
 # Ollama API Models (for completeness)
 class OllamaVersionResponse(BaseModel):
     """Response model for Ollama version."""
+
     version: str = Field(..., description="Ollama version")
 
 
 class OllamaTagsResponse(BaseModel):
     """Response model for Ollama tags."""
+
     models: List[Dict[str, Any]] = Field(default_factory=list)
 
 
 class OllamaProcessResponse(BaseModel):
     """Response model for Ollama running processes."""
+
     models: List[Dict[str, Any]] = Field(default_factory=list)
 
 
 class OllamaGenerateRequest(BaseModel):
     """Request model for Ollama generate."""
+
     model: str = Field(..., description="Model name")
     prompt: str = Field(..., description="Prompt text")
     stream: bool = Field(False, description="Whether to stream response")
@@ -392,12 +498,14 @@ class OllamaGenerateRequest(BaseModel):
 
 class OllamaChatMessage(BaseModel):
     """Chat message model for Ollama."""
+
     role: str = Field(..., description="Message role (user/assistant)")
     content: str = Field(..., description="Message content")
 
 
 class OllamaChatRequest(BaseModel):
     """Request model for Ollama chat."""
+
     model: str = Field(..., description="Model name")
     messages: List[OllamaChatMessage] = Field(..., description="Chat messages")
     stream: bool = Field(False, description="Whether to stream response")
@@ -406,11 +514,13 @@ class OllamaChatRequest(BaseModel):
 # File upload models
 class Body_upload_to_input_dir_documents_upload_post(BaseModel):
     """Request body for file upload."""
+
     file: bytes = Field(..., description="File content")
 
 
 class Body_login_login_post(BaseModel):
     """Request body for login."""
+
     username: str = Field(..., description="Username")
     password: str = Field(..., description="Password")
 
@@ -418,6 +528,7 @@ class Body_login_login_post(BaseModel):
 # Status response models
 class DocStatusResponse(BaseModel):
     """Response model for document status."""
+
     document_id: str = Field(..., description="Document ID")
     status: DocStatus = Field(..., description="Document status")
     message: Optional[str] = None
@@ -425,5 +536,6 @@ class DocStatusResponse(BaseModel):
 
 class DocsStatusesResponse(BaseModel):
     """Response model for multiple document statuses."""
+
     statuses: List[DocStatusResponse] = Field(default_factory=list)
     total: int = Field(0, ge=0)
