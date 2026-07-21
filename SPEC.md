@@ -3,7 +3,7 @@
 > Source of truth for intended behavior. Update this before changing architecture.
 
 ## Goal
-Run one LightRAG endpoint that supports many isolated workspaces without adding containers, ports, domains, or Dokploy environment variables per workspace.
+Run one LightRAG endpoint that supports many isolated workspaces without adding containers, ports, domains, or deployment environment variables per workspace.
 
 ## Users and Scenarios
 - Owner/admin creates workspaces and issues keys.
@@ -28,7 +28,7 @@ Run one LightRAG endpoint that supports many isolated workspaces without adding 
 - NF2: Keys are stored only as HMAC-SHA256 hashes using `WORKSPACE_KEY_PEPPER`.
 - NF3: Unknown, disabled, or mismatched workspaces fail closed.
 - NF4: Local tests, type checks, format checks, and Compose config validation must pass before deploy.
-- NF5: Dokploy production changes require read-only inspection first and explicit deploy intent.
+- NF5: Hosted deployment changes require read-only inspection first and explicit deploy intent.
 
 ## Out of Scope for Current Release
 - External LightRAG proxy mode.
@@ -38,13 +38,12 @@ Run one LightRAG endpoint that supports many isolated workspaces without adding 
 
 ## Acceptance Criteria
 - [x] Managed gateway starts and preserves legacy `main`.
-- [x] Ossi workspace exists and is isolated.
+- [x] Example workspace exists and is isolated.
 - [x] `LIGHTRAG_ADMIN_KEY` naming replaces bootstrap/admin legacy names in repo config.
 - [x] Project structure uses `gateway/app` and `mcp/app`.
 - [ ] MCP is switched from legacy `v1.1.0` simple mode to managed gateway mode.
 - [ ] Public connector release/tag is finalized after pending `v1.3.x` fixes.
 
 ## Open Questions
-- Should production use a dedicated `LIGHTRAG_ADMIN_KEY` distinct from legacy `LIGHTRAG_API_KEY` before MCP gateway-mode rollout?
+- Should hosted deployments use a dedicated `LIGHTRAG_ADMIN_KEY` distinct from legacy `LIGHTRAG_API_KEY` before MCP gateway-mode rollout?
 - What release version should carry the public managed backend mode: `v1.3.1` or `v1.4.0`?
-

@@ -2,9 +2,9 @@
 
 ## To Do
 - [ ] @backend: Resolve pending public `lightrag-mcp-connect` `feature/workspace-gateway` changes — DoD: no dirty worktree, tests pass.
-- [ ] @backend: Decide release tag for managed gateway-aware MCP — DoD: tag exists and production compose can pin it.
-- [ ] @devops: Prepare private deploy switch to gateway-mode — DoD: MCP uses `LIGHTRAG_GATEWAY_URL`, not `LIGHTRAG_BASE_URL`.
-- [ ] @qa: Verify admin tools through MCP — DoD: admin sees tools; Ossi key does not.
+- [ ] @backend: Decide release tag for managed gateway-aware MCP — DoD: tag exists and deployment examples can pin it.
+- [ ] @devops: Prepare deployment example switch to gateway-mode — DoD: MCP uses `LIGHTRAG_GATEWAY_URL`, not `LIGHTRAG_BASE_URL`.
+- [ ] @qa: Verify admin tools through MCP — DoD: admin sees tools; normal workspace key does not.
 - [ ] @docs: Document first-time setup flow for managed backend mode — DoD: README has copy/paste path.
 
 ## In Progress
@@ -14,9 +14,9 @@
 - [ ] @qa: Review `LIGHTRAG_ADMIN_KEY` naming and docs for first-time user clarity.
 
 ## Done
-- [x] @backend: Restore production secrets and remove broken placeholder env.
+- [x] @backend: Document secret hygiene for public repo instructions.
 - [x] @backend: Deploy managed workspace gateway.
-- [x] @backend: Create and verify Ossi workspace isolation.
+- [x] @backend: Create and verify example workspace isolation.
 - [x] @backend: Rename project layout to `gateway/app` and `mcp/app`.
 - [x] @backend: Replace bootstrap admin env wording with `LIGHTRAG_ADMIN_KEY`.
 - [x] @devops: Run local Docker build for `gateway/Dockerfile` — image builds from repo root.

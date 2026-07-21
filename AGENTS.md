@@ -19,9 +19,9 @@ Read only what you need from long implementation files after this orientation.
 - Keep public-facing names clear for first-time self-hosters.
 - Use `LIGHTRAG_ADMIN_KEY` for the owner/admin key name.
 - Keep `LIGHTRAG_SERVER_KEY` internal only.
-- Never print secrets, raw Dokploy env, API keys, passwords, tokens, or signed URLs.
-- For Dokploy work, use the `dokploy` skill/read-only-first flow.
-- For production deploys from a new commit, use Dokploy `compose.deploy`; `compose.redeploy` may rerun an older deployment.
+- Never print secrets, raw deployment env, API keys, passwords, tokens, or signed URLs.
+- For hosted deployment work, inspect the current configuration read-only first and avoid exposing environment values.
+- When deploying a new commit, use the deployment platform's build/deploy action; do not assume a restart automatically uses the latest source.
 
 ## Keep Project Files Current
 Any non-trivial change must update the project state files in the same work session.
@@ -30,8 +30,8 @@ Any non-trivial change must update the project state files in the same work sess
 - If implementation steps, sequencing, or phase ownership changes, update `PLAN.md`.
 - If milestone status changes, update `ROADMAP.md`.
 - If tasks are added, started, blocked, reviewed, or completed, update `BACKLOG.md`.
-- If current production/local status, verification, blockers, or next actions change, update `STATUS.md`.
-- If dependencies, tools, commands, env vars, Docker/Dokploy assumptions, or runtime versions change, update `TECH_STACK.md`.
+- If current deployment/local status, verification, blockers, or next actions change, update `STATUS.md`.
+- If dependencies, tools, commands, env vars, Docker/deployment assumptions, or runtime versions change, update `TECH_STACK.md`.
 - If repository purpose, layout, ownership, or operating model changes, update `PROJECT.md`.
 - If agent workflow rules change, update this `AGENTS.md`.
 
