@@ -209,14 +209,20 @@ más específico.
 
 ## Despliegue (remoto)
 
-Esto asume que ya tienes una instancia de LightRAG en ejecución,
-accesible desde este stack (`LIGHTRAG_URL`).
+Esto despliega el stack managed backend de este repositorio: el
+workspace gateway, el registro en PostgreSQL, la puerta OAuth y el
+wrapper MCP por streamable-HTTP. El gateway inicia procesos hijo
+oficiales de `lightrag-server` por workspace, así que en la ruta remota
+por defecto no hace falta cablear manualmente un servicio LightRAG
+separado y persistente.
 
 ```bash
 git clone https://github.com/alexbic/lightrag-mcp-connect.git
 cd lightrag-mcp-connect/deploy
 cp .env.example .env
-# edita .env: DOMAIN, LIGHTRAG_URL, LIGHTRAG_API_KEY, MCP_AUTH_PASSWORD
+# edita .env: DOMAIN, LIGHTRAG_API_KEY, LIGHTRAG_SERVER_KEY,
+# WORKSPACE_KEY_PEPPER, POSTGRES_PASSWORD, MCP_AUTH_PASSWORD,
+# más las variables LLM_*/EMBEDDING_* de LightRAG
 
 # Sin reverse proxy existente — Caddy gestiona el TLS automáticamente:
 docker compose -f docker-compose.yml up -d --build
@@ -225,15 +231,15 @@ docker compose -f docker-compose.yml up -d --build
 docker compose -f docker-compose.traefik.yml up -d --build
 ```
 
-**¿Aún no tienes LightRAG?** `docker-compose.full-example.yml` en la
-misma carpeta incluye LightRAG mismo junto a este gateway, en un solo
-archivo — todo conectado con placeholders desde `.env` (sin claves
-reales en el código, igual que en los dos archivos de arriba). Es por
-donde empezar si partes de cero en un servidor nuevo:
+**¿Quieres el ejemplo más explícito para empezar desde cero?**
+`docker-compose.full-example.yml` en la misma carpeta mantiene el mismo
+stack managed, pero con los requisitos del gateway/runtime explicados en
+un solo archivo para self-hosters primerizos:
 
 ```bash
 cp .env.example .env
-# edita .env: DOMAIN, LIGHTRAG_API_KEY, MCP_AUTH_PASSWORD, más las
+# edita .env: DOMAIN, LIGHTRAG_API_KEY, LIGHTRAG_SERVER_KEY,
+# WORKSPACE_KEY_PEPPER, POSTGRES_PASSWORD, MCP_AUTH_PASSWORD, más las
 # variables propias de LightRAG — LLM_*/EMBEDDING_* (ver los
 # comentarios en .env.example)
 docker compose -f docker-compose.full-example.yml up -d --build

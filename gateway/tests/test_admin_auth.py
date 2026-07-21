@@ -34,7 +34,7 @@ class _StubRegistry:
 def app_with_registry():
     """Create the gateway app with a stub registry (no lifespan, no postgres)."""
     admin = Principal(key_id=1, workspace=None, is_admin=True)
-    user = Principal(key_id=2, workspace="ossi", is_admin=False)
+    user = Principal(key_id=2, workspace="example", is_admin=False)
     registry = _StubRegistry(
         resolves={"admin-key": admin, "user-key": user, "dead-key": None}
     )

@@ -1,14 +1,8 @@
 # =====================================================
-# lightrag-mcp-connect — remote MCP access to LightRAG
-# (this repo also supports local, zero-setup use via uvx — see README.md)
+# Managed backend mode: remote MCP access through the workspace gateway
 # =====================================================
 #
-# Adds a remote, OAuth-protected MCP endpoint in front of an EXISTING
-# LightRAG instance, so claude.ai / Claude Desktop / Claude Code / any
-# other MCP client can query and update your knowledge base from
-# anywhere — no shared filesystem, no static shared secret, no per-device
-# config file editing.
-#
+# Deploys the public managed stack from this repository:
 #   claude.ai / Claude Desktop / Claude Code / mobile app
 #     --> https://${DOMAIN}/...   (Caddy: automatic HTTPS via Let's Encrypt,
 #                                  rewrites one HTTP header — see Caddyfile)
@@ -16,24 +10,74 @@
 #                                  then Claude manages its own tokens)
 #     --> lightrag-mcp-gw :8000/mcp (private network only)
 #     --> lightrag-mcp-connect   (stdio, installed via uvx-from-git)
-#     --> your LightRAG instance  (LIGHTRAG_URL, X-API-Key)
+#     --> lightrag-gateway       (workspace routing, admin/key registry)
+#     --> managed lightrag-server child processes per workspace
 #
 # REQUIRES:
 #   - A domain (DOMAIN below) with an A/AAAA record pointing at this host
 #   - Ports 80 and 443 open and free on this host (Caddy needs both for
 #     Let's Encrypt HTTP-01 and HTTPS)
-#   - An existing, reachable LightRAG instance (LIGHTRAG_URL below).
-#     Don't have one yet? See https://github.com/HKUDS/LightRAG
+#   - LLM + embedding provider config for LightRAG child processes
 #
 # Already running Traefik in front of other services on this host? Use
 # docker-compose.traefik.yml instead — see README.md.
 #
 # ENV VARS — copy .env.example to .env and fill in:
-#   DOMAIN, LIGHTRAG_URL, LIGHTRAG_API_KEY, MCP_AUTH_PASSWORD
-# (MCP_GIT_REF is optional, defaults to the latest stable release)
+#   DOMAIN, LIGHTRAG_API_KEY, LIGHTRAG_SERVER_KEY, WORKSPACE_KEY_PEPPER,
+#   POSTGRES_PASSWORD, MCP_AUTH_PASSWORD, LLM_*, EMBEDDING_*
+# (POSTGRES_USER, POSTGRES_DB, MCP_GIT_REF are optional)
 # =====================================================
 
 services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: lightrag-postgres
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER:-lightrag}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB:-lightrag}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - lightrag-mcp-net
+    restart: unless-stopped
+
+  lightrag-gateway:
+    build:
+      context: ..
+      dockerfile: gateway/Dockerfile
+    container_name: lightrag-gateway
+    environment:
+      - PORT=9621
+      - POSTGRES_USER=${POSTGRES_USER:-lightrag}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DATABASE=${POSTGRES_DB:-lightrag}
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - WORKSPACE_KEY_PEPPER=${WORKSPACE_KEY_PEPPER}
+      - LIGHTRAG_ADMIN_KEY=${LIGHTRAG_API_KEY}
+      - LIGHTRAG_SERVER_KEY=${LIGHTRAG_SERVER_KEY}
+      - WORKING_DIR=/app/data/rag_storage
+      - INPUT_DIR=/app/data/inputs
+      - WORKSPACE_FIRST_PORT=9700
+      - WORKSPACE_MAX_ACTIVE=16
+      - LLM_BINDING=${LLM_BINDING}
+      - LLM_MODEL=${LLM_MODEL}
+      - LLM_BINDING_HOST=${LLM_BINDING_HOST:-}
+      - LLM_BINDING_API_KEY=${LLM_BINDING_API_KEY}
+      - EMBEDDING_BINDING=${EMBEDDING_BINDING}
+      - EMBEDDING_MODEL=${EMBEDDING_MODEL}
+      - EMBEDDING_BINDING_HOST=${EMBEDDING_BINDING_HOST:-}
+      - EMBEDDING_BINDING_API_KEY=${EMBEDDING_BINDING_API_KEY}
+    volumes:
+      - workspace-storage:/app/data/rag_storage
+      - workspace-inputs:/app/data/inputs
+    depends_on:
+      - postgres
+    networks:
+      - lightrag-mcp-net
+    restart: unless-stopped
+
   caddy:
     image: caddy:2-alpine
     container_name: lightrag-mcp-caddy
@@ -47,18 +91,14 @@ services:
       - lightrag-mcp-caddy-data:/data
     depends_on:
       - lightrag-mcp-auth
+    networks:
+      - lightrag-mcp-net
     restart: unless-stopped
 
   # =====================================================
   # MCP Gateway (internal only — never exposed directly)
   # Wraps the stdio-only lightrag-mcp-connect bridge in supergateway and
   # exposes it as streamable-HTTP on the internal network.
-  #
-  # build: instead of a bare image — supercorp/supergateway:uvx (Alpine)
-  # has no git binary, so uvx-from-git can't clone at startup without it.
-  # mcp-gw/Dockerfile adds only `apk add git` on top of the upstream
-  # image; the MCP package is still installed at container start via
-  # uvx-from-git, not baked into the image.
   # =====================================================
   lightrag-mcp-gw:
     build:
@@ -81,13 +121,15 @@ services:
       # a fresh child process per request instead of tracking sessions —
       # a bit more latency per call, but this whole bug class can't happen.
     environment:
-      - LIGHTRAG_BASE_URL=${LIGHTRAG_URL}
+      - LIGHTRAG_GATEWAY_URL=http://lightrag-gateway:9621
       - LIGHTRAG_API_KEY=${LIGHTRAG_API_KEY}
       - LIGHTRAG_MCP_CONTENT_DB=/data/content.sqlite3
     volumes:
       - lightrag-mcp-content:/data
     networks:
       - lightrag-mcp-net
+    depends_on:
+      - lightrag-gateway
     restart: unless-stopped
 
   # =====================================================
@@ -105,10 +147,6 @@ services:
       - "--no-auto-tls"   # Caddy terminates TLS; this listens plain HTTP
       - "http://lightrag-mcp-gw:8000"
     environment:
-      # Plain-text password — mcp-auth-proxy bcrypt-hashes it internally
-      # at startup, no htpasswd/openssl step needed. This gates the
-      # one-time browser login when a new client does OAuth; it isn't
-      # used per-request afterward (Claude manages its own OAuth token).
       - PASSWORD=${MCP_AUTH_PASSWORD}
       # AUTH_HMAC_SECRET / JWT_PRIVATE_KEY are deliberately NOT set here:
       # mcp-auth-proxy auto-generates and persists both under /data on
@@ -126,6 +164,9 @@ services:
     restart: unless-stopped
 
 volumes:
+  postgres-data:
+  workspace-storage:
+  workspace-inputs:
   lightrag-mcp-auth-data:
   lightrag-mcp-caddy-data:
   lightrag-mcp-content:

@@ -6,12 +6,12 @@ inside the gateway container. Adding a workspace never changes Compose, ports,
 domains, or Dokploy environment.
 
 ```bash
-docker exec lightrag lightrag-workspace create ossi --display-name "Ossi"
+docker exec lightrag lightrag-workspace create example --display-name "Example"
 ```
 
 The command returns the workspace API key once. Give that key to the client as
 its normal `LIGHTRAG_API_KEY`. The gateway stores only an HMAC-SHA256 digest and
-automatically routes every request made with that key to `workspace=ossi`.
+automatically routes every request made with that key to `workspace=example`.
 
 The logical `main` workspace deliberately launches LightRAG with its historical
 empty workspace value, so existing PostgreSQL `default` rows and root-level

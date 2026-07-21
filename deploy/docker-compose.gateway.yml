@@ -62,6 +62,15 @@ services:
       - INPUT_DIR=/app/data/inputs
       - WORKSPACE_FIRST_PORT=9700
       - WORKSPACE_MAX_ACTIVE=16
+      # LightRAG child process provider configuration
+      - LLM_BINDING=${LLM_BINDING}
+      - LLM_MODEL=${LLM_MODEL}
+      - LLM_BINDING_HOST=${LLM_BINDING_HOST:-}
+      - LLM_BINDING_API_KEY=${LLM_BINDING_API_KEY}
+      - EMBEDDING_BINDING=${EMBEDDING_BINDING}
+      - EMBEDDING_MODEL=${EMBEDDING_MODEL}
+      - EMBEDDING_BINDING_HOST=${EMBEDDING_BINDING_HOST:-}
+      - EMBEDDING_BINDING_API_KEY=${EMBEDDING_BINDING_API_KEY}
     volumes:
       - workspace-storage:/app/data/rag_storage
       - workspace-inputs:/app/data/inputs
@@ -72,7 +81,7 @@ services:
   lightrag-mcp:
     build:
       context: ..
-      dockerfile: Dockerfile
+      dockerfile: mcp/Dockerfile
     container_name: lightrag-mcp
     environment:
       # Gateway mode: route through workspace gateway

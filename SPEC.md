@@ -41,9 +41,9 @@ Run one LightRAG endpoint that supports many isolated workspaces without adding 
 - [x] Example workspace exists and is isolated.
 - [x] `LIGHTRAG_ADMIN_KEY` naming replaces bootstrap/admin legacy names in repo config.
 - [x] Project structure uses `gateway/app` and `mcp/app`.
-- [ ] MCP is switched from legacy `v1.1.0` simple mode to managed gateway mode.
+- [ ] MCP is switched from legacy simple mode (`v1.1.1` pin) to managed gateway mode.
 - [ ] Public connector release/tag is finalized after pending `v1.3.x` fixes.
 
 ## Open Questions
 - Should hosted deployments use a dedicated `LIGHTRAG_ADMIN_KEY` distinct from legacy `LIGHTRAG_API_KEY` before MCP gateway-mode rollout?
-- The public managed backend track resumes on `main`; legacy users who need the old simple-mode behavior should pin `v1.1.0`.
+- The public managed backend track resumes on `main`; legacy users who need the old simple-mode behavior should pin `v1.1.1`.

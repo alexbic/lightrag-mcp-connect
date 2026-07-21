@@ -1,18 +1,17 @@
 # =====================================================
-# lightrag-mcp-connect — remote MCP access to LightRAG (Traefik variant)
-# (this repo also supports local, zero-setup use via uvx — see README.md)
+# Managed backend mode: remote MCP access (Traefik variant)
 # =====================================================
 #
 # Same as docker-compose.yml, but for hosts that already run Traefik in
 # front of other services (e.g. via Dokploy/Coolify-style platforms),
-# instead of bundling Caddy. This is the exact setup this project itself
-# runs in production.
+# instead of bundling Caddy. This stack still includes the managed
+# workspace gateway and registry database from this repository.
 #
 # REQUIRES:
 #   - Traefik already running, with an entrypoint named `websecure` (TLS)
 #   - Traefik and this stack sharing a common external docker network —
 #     set TRAEFIK_NETWORK below to its name
-#   - An existing, reachable LightRAG instance (LIGHTRAG_URL below)
+#   - LLM + embedding provider config for LightRAG child processes
 #
 # Any reverse proxy other than Traefik or Caddy? Two things it must do in
 # front of lightrag-mcp-auth:
@@ -24,10 +23,60 @@
 #      Caddy:  `header_up MCP-Protocol-Version 2025-06-18` (see Caddyfile)
 #
 # ENV VARS — copy .env.example to .env and fill in:
-#   DOMAIN, LIGHTRAG_URL, LIGHTRAG_API_KEY, MCP_AUTH_PASSWORD, TRAEFIK_NETWORK
+#   DOMAIN, LIGHTRAG_API_KEY, LIGHTRAG_SERVER_KEY, WORKSPACE_KEY_PEPPER,
+#   POSTGRES_PASSWORD, MCP_AUTH_PASSWORD, TRAEFIK_NETWORK, LLM_*, EMBEDDING_*
 # =====================================================
 
 services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: lightrag-postgres
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER:-lightrag}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB:-lightrag}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - lightrag-mcp-net
+    restart: unless-stopped
+
+  lightrag-gateway:
+    build:
+      context: ..
+      dockerfile: gateway/Dockerfile
+    container_name: lightrag-gateway
+    environment:
+      - PORT=9621
+      - POSTGRES_USER=${POSTGRES_USER:-lightrag}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DATABASE=${POSTGRES_DB:-lightrag}
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - WORKSPACE_KEY_PEPPER=${WORKSPACE_KEY_PEPPER}
+      - LIGHTRAG_ADMIN_KEY=${LIGHTRAG_API_KEY}
+      - LIGHTRAG_SERVER_KEY=${LIGHTRAG_SERVER_KEY}
+      - WORKING_DIR=/app/data/rag_storage
+      - INPUT_DIR=/app/data/inputs
+      - WORKSPACE_FIRST_PORT=9700
+      - WORKSPACE_MAX_ACTIVE=16
+      - LLM_BINDING=${LLM_BINDING}
+      - LLM_MODEL=${LLM_MODEL}
+      - LLM_BINDING_HOST=${LLM_BINDING_HOST:-}
+      - LLM_BINDING_API_KEY=${LLM_BINDING_API_KEY}
+      - EMBEDDING_BINDING=${EMBEDDING_BINDING}
+      - EMBEDDING_MODEL=${EMBEDDING_MODEL}
+      - EMBEDDING_BINDING_HOST=${EMBEDDING_BINDING_HOST:-}
+      - EMBEDDING_BINDING_API_KEY=${EMBEDDING_BINDING_API_KEY}
+    volumes:
+      - workspace-storage:/app/data/rag_storage
+      - workspace-inputs:/app/data/inputs
+    depends_on:
+      - postgres
+    networks:
+      - lightrag-mcp-net
+    restart: unless-stopped
+
   # =====================================================
   # MCP Gateway (internal only — see lightrag-mcp-auth below for
   # the Traefik-facing OAuth front door)
@@ -52,13 +101,15 @@ services:
       # process per request instead of tracking sessions — a bit more
       # latency per call, but this whole bug class can't happen.
     environment:
-      - LIGHTRAG_BASE_URL=${LIGHTRAG_URL}
+      - LIGHTRAG_GATEWAY_URL=http://lightrag-gateway:9621
       - LIGHTRAG_API_KEY=${LIGHTRAG_API_KEY}
       - LIGHTRAG_MCP_CONTENT_DB=/data/content.sqlite3
     volumes:
       - lightrag-mcp-content:/data
     networks:
       - lightrag-mcp-net
+    depends_on:
+      - lightrag-gateway
     restart: unless-stopped
 
   # =====================================================
@@ -108,6 +159,9 @@ services:
       # - traefik.http.routers.lightrag-mcp.priority=100
 
 volumes:
+  postgres-data:
+  workspace-storage:
+  workspace-inputs:
   lightrag-mcp-auth-data:
   lightrag-mcp-content:
 

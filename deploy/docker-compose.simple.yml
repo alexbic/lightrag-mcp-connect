@@ -41,7 +41,7 @@ services:
   lightrag-mcp:
     build:
       context: ..
-      dockerfile: Dockerfile
+      dockerfile: mcp/Dockerfile
     container_name: lightrag-mcp
     environment:
       # Direct mode: no gateway, talk to LightRAG

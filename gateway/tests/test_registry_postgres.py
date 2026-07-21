@@ -14,11 +14,11 @@ async def test_registry_lifecycle_against_postgres() -> None:
     )
     try:
         assert await registry.workspace_enabled("main")
-        assert await registry.create_workspace("ossi", "Ossi") == "ossi"
-        token = await registry.issue_key("ossi")
+        assert await registry.create_workspace("example", "Example") == "example"
+        token = await registry.issue_key("example")
         principal = await registry.resolve(token)
         assert principal is not None
-        assert principal.workspace == "ossi"
+        assert principal.workspace == "example"
         assert principal.is_admin is False
         assert await registry.resolve("wrong-key") is None
 

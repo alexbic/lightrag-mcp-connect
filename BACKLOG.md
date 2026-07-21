@@ -1,7 +1,6 @@
 # Backlog
 
 ## To Do
-- [ ] @devops: Prepare deployment example switch to gateway-mode — DoD: MCP uses `LIGHTRAG_GATEWAY_URL`, not `LIGHTRAG_BASE_URL`.
 - [ ] @qa: Verify admin tools through MCP — DoD: admin sees tools; normal workspace key does not.
 - [ ] @docs: Document first-time setup flow for managed backend mode — DoD: README has copy/paste path.
 
@@ -12,6 +11,7 @@
 - [ ] @qa: Review `LIGHTRAG_ADMIN_KEY` naming and docs for first-time user clarity.
 
 ## Done
+- [x] @devops: Prepare deployment example switch to gateway-mode — DoD: remote and full-example Compose stacks run MCP through `LIGHTRAG_GATEWAY_URL`, not direct `LIGHTRAG_BASE_URL`, docs/examples match, and Compose config plus MCP image build were re-verified.
 - [x] @backend: Merge `feature/workspace-gateway` into `main` — DoD: clean merge completed on `main`, relevant checks passed, and project state files updated.
 - [x] @backend: Reconcile `main` release direction before merging `feature/workspace-gateway` — DoD: decision recorded that `main` resumes the managed gateway track while legacy users pin `v1.1.1`, then rerun safe merge pre-checks.
 - [x] @backend: Resolve pending public `lightrag-mcp-connect` `feature/workspace-gateway` changes — DoD: no dirty worktree, tests pass.

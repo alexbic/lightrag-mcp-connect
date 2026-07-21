@@ -6,7 +6,7 @@ from lightrag_workspace_gateway.registry import WorkspaceRegistry
 
 
 def test_slug_validation() -> None:
-    assert WorkspaceRegistry.validate_slug("Ossi") == "ossi"
+    assert WorkspaceRegistry.validate_slug("Example") == "example"
     assert WorkspaceRegistry.validate_slug("project-42") == "project-42"
     with pytest.raises(ValueError):
         WorkspaceRegistry.validate_slug("../escape")
@@ -38,4 +38,4 @@ def test_upstream_key_is_added_only_after_workspace_auth(monkeypatch) -> None:
 def test_main_preserves_legacy_storage_workspace(monkeypatch) -> None:
     monkeypatch.delenv("WORKSPACE_MAIN_STORAGE_NAME", raising=False)
     assert WorkspaceProcessManager.storage_workspace_for("main") == ""
-    assert WorkspaceProcessManager.storage_workspace_for("ossi") == "ossi"
+    assert WorkspaceProcessManager.storage_workspace_for("example") == "example"

@@ -293,14 +293,19 @@ something more specific.
 
 ## Deploying (remote)
 
-This assumes you already have an existing LightRAG instance running
-somewhere reachable from this stack (`LIGHTRAG_URL`).
+This deploys the managed backend stack from this repository: the
+workspace gateway, PostgreSQL registry, OAuth front door, and the
+streamable-HTTP MCP wrapper. The gateway starts official
+`lightrag-server` child processes per workspace, so there is no separate
+long-lived LightRAG service to wire by hand in the default remote path.
 
 ```bash
 git clone https://github.com/alexbic/lightrag-mcp-connect.git
 cd lightrag-mcp-connect/deploy
 cp .env.example .env
-# edit .env: DOMAIN, LIGHTRAG_URL, LIGHTRAG_API_KEY, MCP_AUTH_PASSWORD
+# edit .env: DOMAIN, LIGHTRAG_API_KEY, LIGHTRAG_SERVER_KEY,
+# WORKSPACE_KEY_PEPPER, POSTGRES_PASSWORD, MCP_AUTH_PASSWORD,
+# plus LightRAG's LLM_*/EMBEDDING_* vars
 
 # No existing reverse proxy — Caddy handles TLS automatically:
 docker compose -f docker-compose.yml up -d --build
@@ -309,17 +314,16 @@ docker compose -f docker-compose.yml up -d --build
 docker compose -f docker-compose.traefik.yml up -d --build
 ```
 
-**Don't have LightRAG running yet?** `docker-compose.full-example.yml`
-in the same folder includes LightRAG itself alongside this gateway, in
-one file — everything wired together with placeholders pulled from
-`.env` (no real keys committed, same as the two files above). It's
-what to reach for if you're starting completely from zero on a fresh
-server:
+**Want the most explicit from-zero example?**
+`docker-compose.full-example.yml` in the same folder keeps the same
+managed stack, but with the gateway/runtime requirements spelled out in
+one place for first-time self-hosters:
 
 ```bash
 cp .env.example .env
-# edit .env: DOMAIN, LIGHTRAG_API_KEY, MCP_AUTH_PASSWORD, plus LightRAG's
-# own LLM_*/EMBEDDING_* vars (see the comments in .env.example)
+# edit .env: DOMAIN, LIGHTRAG_API_KEY, LIGHTRAG_SERVER_KEY,
+# WORKSPACE_KEY_PEPPER, POSTGRES_PASSWORD, MCP_AUTH_PASSWORD,
+# plus LightRAG's LLM_*/EMBEDDING_* vars (see the comments in .env.example)
 docker compose -f docker-compose.full-example.yml up -d --build
 ```
 

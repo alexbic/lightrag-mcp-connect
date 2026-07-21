@@ -11,7 +11,7 @@ Query and update a LightRAG knowledge graph via MCP tools.
 ## File Naming Convention
 
 Use `{workspace}__{description}.md` format.
-Examples: `main__project-notes.md`, `ossi__architecture.md`
+Examples: `main__project-notes.md`, `example__architecture.md`
 
 ## Session Metadata
 

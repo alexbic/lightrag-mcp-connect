@@ -48,11 +48,17 @@ UV_CACHE_DIR=/tmp/lightrag-mcp-cache uv run --directory gateway --extra dev mypy
 UV_CACHE_DIR=/tmp/lightrag-mcp-cache uv run --directory gateway --extra dev black --check app tests
 
 docker compose -f deploy/docker-compose.gateway.yml config --quiet
+docker compose -f deploy/docker-compose.yml config --quiet
+docker compose -f deploy/docker-compose.traefik.yml config --quiet
+docker compose -f deploy/docker-compose.full-example.yml config --quiet
+docker compose -f deploy/docker-compose.simple.yml config --quiet
 docker build -f gateway/Dockerfile -t lightrag-mcp-gateway-layout-smoke .
+docker build -f mcp/Dockerfile -t lightrag-mcp-smoke .
 ```
 
 ## Deployment Notes
 - Use released tags for production deployments.
+- Remote managed deployments now route MCP through `LIGHTRAG_GATEWAY_URL` to the bundled `lightrag-gateway`; direct `LIGHTRAG_BASE_URL` wiring is kept for simple mode only.
 - Do not commit `.env` files or real secrets.
 - Keep the gateway internal server key private.
 - If using a hosting platform, inspect current deployed config before changing it.

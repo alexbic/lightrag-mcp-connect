@@ -20,7 +20,7 @@
 - [x] Release/tag managed gateway-aware MCP version.
 - [x] Update example Compose from `v1.1.0` to that release.
 - [x] Merge `feature/workspace-gateway` into `main`.
-- [ ] Use `LIGHTRAG_GATEWAY_URL` for MCP instead of `LIGHTRAG_BASE_URL`.
+- [x] Use `LIGHTRAG_GATEWAY_URL` for MCP instead of `LIGHTRAG_BASE_URL`.
 - [ ] Verify admin tools and normal workspace isolation through MCP.
 
 ### Next Safe Merge Step
