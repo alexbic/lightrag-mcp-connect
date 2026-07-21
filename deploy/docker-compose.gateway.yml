@@ -1,0 +1,96 @@
+# =====================================================
+# Gateway mode: MCP → workspace gateway → LightRAG (multi-tenant)
+# =====================================================
+#
+# Workspace-aware mode — MCP server routes requests through the
+# workspace gateway, which validates keys and routes to isolated workspaces.
+# Multiple tenants, isolated knowledge bases, admin management tools.
+#
+# Use this when:
+# - You need multi-tenancy (multiple isolated workspaces)
+# - You want to manage access controls per workspace
+# - You need admin tools to create workspaces and manage keys
+#
+# ENV VARS (set in .env or pass via docker run):
+#   LIGHTRAG_GATEWAY_URL — Gateway URL (default: http://lightrag-gateway:9621)
+#   LIGHTRAG_API_KEY — Superadmin key (imported as gateway admin, sees all workspaces)
+#   LIGHTRAG_SERVER_KEY — LightRAG internal key (gateway → LightRAG, keep secret)
+#   WORKSPACE_KEY_PEPPER — Pepper for workspace key hashing (generate one, keep secret)
+#   WORKSPACE_ADMIN_KEY — Gateway admin key (for X-Admin-Key validation)
+#   POSTGRES_* — PostgreSQL connection (for workspace registry)
+#   LIGHTRAG_FILE_PATH_ROOT — Optional root for file_path uploads
+#   LIGHTRAG_MCP_INSTRUCTIONS_FILE — Optional instructions file path
+#
+# To start: docker compose -f docker-compose.gateway.yml up -d
+#
+# Admin workflow:
+#   1. Connect with LIGHTRAG_API_KEY (superadmin) → sees all workspaces + admin tools
+#   2. Use create_workspace(name="myproject") → returns api_key
+#   3. Share api_key with collaborators → they see only that workspace
+#   4. Use issue_key/revoke_key/rotate_key to manage keys
+# =====================================================
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: lightrag-postgres
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER:-lightrag}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB:-lightrag}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  lightrag-gateway:
+    build:
+      context: ..
+      dockerfile: services/workspace-gateway/Dockerfile
+    container_name: lightrag-gateway
+    environment:
+      # Gateway configuration
+      - PORT=9621
+      - WORKSPACE_DATABASE_URL=postgresql://${POSTGRES_USER:-lightrag}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-lightrag}
+      - WORKSPACE_KEY_PEPPER=${WORKSPACE_KEY_PEPPER}
+      - WORKSPACE_ADMIN_KEY=${WORKSPACE_ADMIN_KEY}
+      # Import the operator's env key as superadmin
+      - WORKSPACE_BOOTSTRAP_ADMIN_KEY=${LIGHTRAG_API_KEY}
+      # LightRAG internal key (gateway → child LightRAG instances)
+      - LIGHTRAG_SERVER_KEY=${LIGHTRAG_SERVER_KEY}
+      # Workspace storage paths
+      - WORKING_DIR=/app/data/rag_storage
+      - INPUT_DIR=/app/data/inputs
+      - WORKSPACE_FIRST_PORT=9700
+      - WORKSPACE_MAX_ACTIVE=16
+    volumes:
+      - workspace-storage:/app/data/rag_storage
+      - workspace-inputs:/app/data/inputs
+    depends_on:
+      - postgres
+    restart: unless-stopped
+
+  lightrag-mcp:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    container_name: lightrag-mcp
+    environment:
+      # Gateway mode: route through workspace gateway
+      - LIGHTRAG_GATEWAY_URL=http://lightrag-gateway:9621
+      - LIGHTRAG_API_KEY=${LIGHTRAG_API_KEY}
+      # Optional: file_path uploads from a trusted local directory
+      - LIGHTRAG_FILE_PATH_ROOT=${LIGHTRAG_FILE_PATH_ROOT:-}
+      # Optional: agent instructions injected at handshake
+      - LIGHTRAG_MCP_INSTRUCTIONS_FILE=${LIGHTRAG_MCP_INSTRUCTIONS_FILE:-}
+    depends_on:
+      - lightrag-gateway
+    restart: unless-stopped
+
+volumes:
+  postgres-data:
+  workspace-storage:
+  workspace-inputs:
+
+networks:
+  default:
+    name: lightrag-mcp-net

@@ -129,6 +129,81 @@ unless `LIGHTRAG_FILE_PATH_ROOT` names an allowed directory. Resolved paths
 { "filename": "notes.md", "text_content": "Full document text" }
 ```
 
+
+## Workspace-aware mode
+
+As of v1.3.0, this MCP server supports **workspace routing** through an integrated gateway component, enabling multi-tenant knowledge bases with isolated workspaces and admin-managed access controls. Two runtime modes:
+
+### Simple mode (default)
+
+Direct connection to LightRAG, single workspace. All tools talk to LightRAG directly with `LIGHTRAG_API_KEY`. This is the legacy behavior (back compatible with existing deployments).
+
+```
+MCP client → lightrag-mcp-connect → LightRAG (single workspace)
+```
+
+**Use this when:** You're testing locally, have a single-use LightRAG instance, or don't need multi-tenancy.
+
+**Quick start:**
+```bash
+cp deploy/.env.example .env
+# Edit .env: set LIGHTRAG_API_KEY, LLM_BINDING_API_KEY, etc.
+docker compose -f deploy/docker-compose.simple.yml up -d
+```
+
+### Gateway mode (multi-tenant)
+
+Requests route through the **workspace gateway**, which validates keys and routes to isolated workspace-specific LightRAG instances. Multiple tenants, isolated knowledge bases, admin management tools.
+
+```
+MCP client → lightrag-mcp-connect → workspace gateway → LightRAG(ws)
+                              ↓ (per-call api_key argument)
+                         isolated workspace
+```
+
+**Key features:**
+- **Multi-tenancy:** Each workspace has isolated storage and embeddings
+- **Access control:** API keys bound to workspaces (can't see other workspaces)
+- **Admin tools:** `create_workspace`, `issue_key`, `revoke_key`, `rotate_key` (only for admin keys)
+- **Dynamic routing:** Pass `api_key` argument in tool calls to target specific workspaces
+
+**Quick start:**
+```bash
+cp deploy/.env.example .env
+# Edit .env: set LIGHTRAG_API_KEY, WORKSPACE_ADMIN_KEY, WORKSPACE_KEY_PEPPER, POSTGRES_*
+docker compose -f deploy/docker-compose.gateway.yml up -d
+```
+
+**Admin workflow:**
+1. Connect with `LIGHTRAG_API_KEY` (superadmin) → sees all workspaces + admin tools
+2. Use `create_workspace(name="myproject")` → returns `api_key`
+3. Share `api_key` with collaborators → they see only that workspace
+4. Use `issue_key`/`revoke_key`/`rotate_key` to manage keys
+
+**Per-call workspace targeting:** In gateway mode, agents can pass an `api_key` argument in tool calls to route to a specific workspace (instead of using the env key's default workspace):
+
+```jsonc
+{ "tool_name": "query_text", "arguments": { "query": "...", "api_key": "lr_myproject_ABC123..." } }
+```
+
+### Mode selection
+
+Mode is determined by environment variables:
+
+| Variable | Simple mode | Gateway mode |
+|----------|-------------|--------------|
+| `LIGHTRAG_GATEWAY_URL` | Unset | Set (e.g., `http://lightrag-gateway:9621`) |
+| `LIGHTRAG_BASE_URL` | Set (LightRAG URL) | Ignored |
+| `LIGHTRAG_API_KEY` | Direct LightRAG key | Superadmin key (imported as gateway admin) |
+
+**Switching modes:** Toggling `LIGHTRAG_GATEWAY_URL` switches between modes without losing access — the same `LIGHTRAG_API_KEY` works in both (sees all data directly in simple mode, or all workspaces as superadmin in gateway mode).
+
+### Agent instructions
+
+The MCP server can inject instructions into agents' system prompts at handshake (via the `instructions` field in `InitializeResult`). Use this to teach agents workspace-aware conventions without editing config files on every machine.
+
+**Enable:** Set `LIGHTRAG_MCP_INSTRUCTIONS_FILE=/path/to/instructions.md` and restart the MCP server. See `src/lightrag_mcp_connect/instructions.example.md` for format.
+
 ## Architecture
 
 ```
