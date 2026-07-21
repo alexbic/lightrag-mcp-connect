@@ -266,7 +266,7 @@ at this package via [`uv`](https://docs.astral.sh/uv/)'s `uvx`:
       "command": "uvx",
       "args": [
         "--from",
-        "git+https://github.com/alexbic/lightrag-mcp-connect.git@v1.1.0",
+        "git+https://github.com/alexbic/lightrag-mcp-connect.git@v1.3.0",
         "lightrag-mcp-connect"
       ],
       "env": {
@@ -285,9 +285,9 @@ first run — no manual clone or `pip install` step, ever. Running this
 way can also use `file_path`: set `LIGHTRAG_FILE_PATH_ROOT` to the narrowest
 directory the MCP server should be allowed to read.
 
-The URL above pins the latest stable release (`@v1.1.0` — see
+The URL above pins the latest stable release (`@v1.3.0` — see
 [Releases](https://github.com/alexbic/lightrag-mcp-connect/releases)
-for what's available). Drop the `@v1.1.0` entirely to always track
+for what's available). Drop the `@v1.3.0` entirely to always track
 `main` instead, or replace it with a commit SHA if you need to pin
 something more specific.
 
@@ -354,7 +354,7 @@ different server names, in the same MCP client:
       "command": "uvx",
       "args": [
         "--from",
-        "git+https://github.com/alexbic/lightrag-mcp-connect.git@v1.1.0",
+        "git+https://github.com/alexbic/lightrag-mcp-connect.git@v1.3.0",
         "lightrag-mcp-connect"
       ],
       "env": {

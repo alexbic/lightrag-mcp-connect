@@ -182,7 +182,7 @@ Apunta un cliente MCP directamente a este paquete vía
       "command": "uvx",
       "args": [
         "--from",
-        "git+https://github.com/alexbic/lightrag-mcp-connect.git@v1.1.0",
+        "git+https://github.com/alexbic/lightrag-mcp-connect.git@v1.3.0",
         "lightrag-mcp-connect"
       ],
       "env": {
@@ -201,9 +201,9 @@ así también obtienes soporte de `file_path` gratis: el servidor MCP lee
 los archivos directamente desde tu disco, ya que es la misma máquina que
 la herramienta que llama.
 
-La URL de arriba fija la última versión estable (`@v1.1.0` — ver
+La URL de arriba fija la última versión estable (`@v1.3.0` — ver
 [Releases](https://github.com/alexbic/lightrag-mcp-connect/releases)
-para ver qué hay disponible). Quita `@v1.1.0` por completo para seguir
+para ver qué hay disponible). Quita `@v1.3.0` por completo para seguir
 siempre `main`, o reemplázalo con un SHA de commit si necesitas algo
 más específico.
 
@@ -272,7 +272,7 @@ cliente MCP:
       "command": "uvx",
       "args": [
         "--from",
-        "git+https://github.com/alexbic/lightrag-mcp-connect.git@v1.1.0",
+        "git+https://github.com/alexbic/lightrag-mcp-connect.git@v1.3.0",
         "lightrag-mcp-connect"
       ],
       "env": {

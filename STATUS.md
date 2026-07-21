@@ -27,9 +27,10 @@ Managed backend mode is the current release track. The public connector reposito
 - Verified `deploy/docker-compose.gateway.yml`, `deploy/docker-compose.yml`, `deploy/docker-compose.full-example.yml`, and `deploy/docker-compose.traefik.yml` config.
 - Verified `gateway/Dockerfile` build.
 - Verified remote tag `v1.3.0` exists.
+- Refreshed README and Compose release pins from `v1.1.0` to `v1.3.0`.
 
 ## In Work
-- Managed backend release hardening and documentation pin refresh.
+- Managed backend release hardening.
 - Public MCP gateway-mode release preparation.
 
 ## Blockers
@@ -37,7 +38,6 @@ Managed backend mode is the current release track. The public connector reposito
 
 ## Next
 - Finish the public managed gateway-aware MCP release.
-- Finish the README and compose pin refresh for managed gateway mode.
 - Keep `BACKLOG.md` and `STATUS.md` updated before and during future repository work so interrupted sessions can be resumed safely.
 - Decompose future large tasks into independently testable backlog items before implementation.
 - Check applicable skills/tools before manual specialized workflows; propose a reusable skill when a workflow repeats.
