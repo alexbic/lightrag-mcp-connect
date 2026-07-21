@@ -38,6 +38,35 @@ When starting work in another repository, check whether it has this project-stat
 
 If the structure is missing, review the repository first, create the files with repository-appropriate content, and then continue the implementation work using those files as the shared operating context.
 
+## Task State Protocol
+Before starting any non-trivial repository work, make the task recoverable:
+
+1. Add or update a `BACKLOG.md` item with:
+   - owner lane such as `@backend`, `@docs`, `@qa`, or `@devops`;
+   - short task title;
+   - clear Definition of Done.
+2. Move the item to `In Progress` when implementation starts.
+3. Update `STATUS.md` with:
+   - what is being worked on;
+   - current assumptions;
+   - known blockers or risks;
+   - next action if the session stops.
+
+During work, keep the project files current whenever there is a meaningful intermediate result:
+
+- tests/checks run or intentionally skipped;
+- partial implementation completed;
+- blocker discovered;
+- architecture or scope changed;
+- deployment/configuration state changed.
+
+At the end of the work session:
+
+- move finished items to `Done` or unfinished items to `Review`/`To Do` with a clear next action;
+- update `STATUS.md` so another agent can resume without reading the whole chat;
+- update `PLAN.md`, `SPEC.md`, `ROADMAP.md`, or `TECH_STACK.md` when the work changed them;
+- mention in the handoff which checks passed, failed, or were not run.
+
 ## Keep Project Files Current
 Any non-trivial change must update the project state files in the same work session.
 

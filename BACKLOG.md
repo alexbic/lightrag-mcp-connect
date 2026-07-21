@@ -14,6 +14,8 @@
 - [ ] @qa: Review `LIGHTRAG_ADMIN_KEY` naming and docs for first-time user clarity.
 
 ## Done
+- [x] @docs: Add recoverable task-state protocol for agents — DoD: `AGENTS.md` explains how to record start, progress, blockers, checks, and handoff.
+- [x] @docs: Add public privacy/bootstrap rules to agent instructions.
 - [x] @backend: Document secret hygiene for public repo instructions.
 - [x] @backend: Deploy managed workspace gateway.
 - [x] @backend: Create and verify example workspace isolation.

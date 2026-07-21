@@ -18,6 +18,7 @@ Managed backend mode is the current release track. The public connector reposito
 - Simplified project structure to `gateway/app` and `mcp/app`.
 - Renamed user-facing admin env to `LIGHTRAG_ADMIN_KEY`.
 - Added project instruction files.
+- Added recoverable task-state protocol for agents.
 - Verified MCP checks: 29 passed, mypy clean, black clean.
 - Verified gateway checks: 8 passed, 1 skipped, mypy clean, black clean.
 - Verified `deploy/docker-compose.gateway.yml` config and `gateway/Dockerfile` build.
@@ -32,3 +33,4 @@ Managed backend mode is the current release track. The public connector reposito
 ## Next
 - Finish the public managed gateway-aware MCP release.
 - Update docs so first-time self-hosters can choose simple mode or managed gateway mode without reading implementation details.
+- Keep `BACKLOG.md` and `STATUS.md` updated before and during future repository work so interrupted sessions can be resumed safely.
