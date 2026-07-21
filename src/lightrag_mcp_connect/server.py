@@ -27,6 +27,8 @@ from .client import (
     LightRAGAPIError,
     LightRAGTimeoutError,
     LightRAGServerError,
+    set_request_api_key,
+    reset_request_api_key,
 )
 from .tool_handlers import TOOL_HANDLERS
 
@@ -968,14 +970,29 @@ async def handle_list_tools() -> List[Tool]:  # ListToolsResult:
 
 
 def _get_lightrag_client() -> LightRAGClient:
-    """Create the shared API client lazily from non-secret configuration."""
+    """Create the shared API client lazily from non-secret configuration.
+
+    Mode selection: if ``LIGHTRAG_GATEWAY_URL`` is set, all traffic goes to the
+    workspace gateway (which validates the key and routes to a workspace); the
+    operator's env ``LIGHTRAG_API_KEY`` is then the superadmin key. Otherwise
+    the client talks to LightRAG directly with that same key (simple/legacy
+    mode, one workspace). The shared connection pool is identical in both
+    modes; per-call workspace routing is handled by a request-scoped key
+    override (see :func:`set_request_api_key`), not by swapping clients.
+    """
     global lightrag_client
     if lightrag_client is None:
+        gateway_url = os.getenv("LIGHTRAG_GATEWAY_URL")
+        base_url = gateway_url or os.getenv("LIGHTRAG_BASE_URL", "http://localhost:9621")
         lightrag_client = LightRAGClient(
-            base_url=os.getenv("LIGHTRAG_BASE_URL", "http://localhost:9621"),
+            base_url=base_url,
             api_key=os.getenv("LIGHTRAG_API_KEY"),
             timeout=float(os.getenv("LIGHTRAG_TIMEOUT", "30.0")),
         )
+        if gateway_url:
+            logger.info("Gateway mode: routing through %s", gateway_url)
+        else:
+            logger.info("Simple mode: talking to LightRAG directly at %s", base_url)
     return lightrag_client
 
 
@@ -990,13 +1007,23 @@ async def handle_call_tool_refactored(
             LightRAGValidationError(f"Unknown tool: {tool_name}"), tool_name
         )
 
+    # ``api_key`` is a routing meta-parameter, not a tool argument: it lets a
+    # caller target a specific workspace in gateway mode by passing that
+    # workspace's key. Strip it before validation (the typed argument models
+    # use extra="forbid") and bind it to the current async task so the shared
+    # client carries it as a per-request X-API-Key header.
+    call_arguments = dict(arguments or {})
+    per_call_key = call_arguments.pop("api_key", None)
+    token = set_request_api_key(per_call_key)
     try:
-        result = await handler(arguments or {}, _get_lightrag_client())
+        result = await handler(call_arguments, _get_lightrag_client())
         logger.info("Tool %s completed successfully", tool_name)
         return _create_success_response(result, tool_name)
     except Exception as error:
         logger.error("Tool %s failed: %s", tool_name, type(error).__name__)
         return _create_error_response(error, tool_name)
+    finally:
+        reset_request_api_key(token)
 
 
 async def main() -> None:
