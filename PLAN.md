@@ -19,17 +19,18 @@
 - [x] Resolve pending public `lightrag-mcp-connect` branch changes.
 - [x] Release/tag managed gateway-aware MCP version.
 - [x] Update example Compose from `v1.1.0` to that release.
-- [ ] Merge `feature/workspace-gateway` into `main`.
+- [x] Merge `feature/workspace-gateway` into `main`.
 - [ ] Use `LIGHTRAG_GATEWAY_URL` for MCP instead of `LIGHTRAG_BASE_URL`.
 - [ ] Verify admin tools and normal workspace isolation through MCP.
 
 ### Next Safe Merge Step
 **Goal:** Land the verified `feature/workspace-gateway` branch into `main` without losing release/history context.
 
-**Decision Gate resolution (2026-07-21):**
+**Completed on 2026-07-21:**
 - `main` resumes the managed gateway track.
 - The reverted stable line remains available to legacy users by pinning `v1.1.0`.
-- Continue the merge sequence, but still stop if `origin/main` changes again in a way that affects release or deployment assumptions.
+- `feature/workspace-gateway` merged cleanly into `main`.
+- Relevant verification passed on merged `main`.
 
 **Pre-checks:**
 - Confirm current branch is `feature/workspace-gateway`.
