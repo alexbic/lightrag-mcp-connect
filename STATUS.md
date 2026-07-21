@@ -1,6 +1,6 @@
 # Status: LightRAG MCP Gateway
 
-**Updated:** 2026-07-21T20:20:00Z
+**Updated:** 2026-07-21T20:34:00Z
 
 ## Summary
 Managed backend mode is the current release track. The public connector repository owns both `mcp/app` and `gateway/app`; deployments should consume released versions from this repository instead of copying connector source into separate deployment repositories.
@@ -30,14 +30,15 @@ Managed backend mode is the current release track. The public connector reposito
 - Refreshed README and Compose release pins from `v1.1.0` to `v1.3.0`.
 
 ## In Work
-- Executing `PLAN.md` "Next Safe Merge Step" to merge `feature/workspace-gateway` into `main`.
+- Merge execution paused after pre-checking `origin/main` and hitting a documented stop condition.
 
 ## Blockers
-- None known yet; stop immediately if the worktree becomes dirty, `origin/main` changed in a way that affects release/deployment assumptions, merge conflicts are non-obvious, or verification cannot be restored.
+- `origin/main` now points to `2b555bc` (`revert: restore stable v1.1.0 without workspace routing`), which changes release and deployment assumptions relative to the managed backend merge plan. Per `PLAN.md`, stop before merging until the release direction is explicitly reconciled.
 
 ## Next
-- Continue `PLAN.md` "Next Safe Merge Step": fetch and inspect `origin/main`, merge into local `main` only if divergence is safe, then run full verification and push.
-- Stop before merge if the worktree is dirty, remote `main` changed unexpectedly, conflicts are non-obvious, or verification cannot pass.
+- Decide whether `main` should remain on the reverted stable line at `2b555bc` or resume the managed backend release track.
+- If managed backend remains the target, rerun `PLAN.md` "Next Safe Merge Step" from a clean worktree after updating the merge plan to account for the `main` revert.
+- Do not merge `feature/workspace-gateway` into `main` until that release-direction decision is recorded.
 - Keep `BACKLOG.md` and `STATUS.md` updated before and during future repository work so interrupted sessions can be resumed safely.
 - Decompose future large tasks into independently testable backlog items before implementation.
 - Check applicable skills/tools before manual specialized workflows; propose a reusable skill when a workflow repeats.

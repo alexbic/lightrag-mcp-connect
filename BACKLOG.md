@@ -6,10 +6,10 @@
 - [ ] @docs: Document first-time setup flow for managed backend mode — DoD: README has copy/paste path.
 
 ## In Progress
-- [ ] @backend: Merge `feature/workspace-gateway` into `main` — DoD: clean merge, relevant checks pass, `main` pushed, project state files updated.
 - [ ] @backend: Managed backend hardening and project readability cleanup — started 2026-07-21.
 
 ## Review
+- [ ] @backend: Reconcile `main` release direction before merging `feature/workspace-gateway` — DoD: decide whether `main` should stay on reverted stable `v1.1.0` line or accept the managed gateway track, then rerun safe merge pre-checks.
 - [ ] @qa: Review `LIGHTRAG_ADMIN_KEY` naming and docs for first-time user clarity.
 
 ## Done
