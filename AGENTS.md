@@ -89,6 +89,25 @@ When implementation or verification fails, do not stop at the first failure unle
 
 Never mark a task complete while required verification is still blocked unless the user explicitly waives that verification.
 
+## Decision Gate
+When a task is blocked by a product, release, security, architecture, or deployment-direction decision, do not treat it as an ordinary technical blocker and do not choose silently.
+
+1. Stop before irreversible work such as merging, releasing, deleting code, changing production deployment, or publishing credentials/config.
+2. Record the decision point in `STATUS.md` and move or add a `BACKLOG.md` item to `Review`.
+3. Present the maintainers with 2-3 concrete options, including:
+   - what each option changes;
+   - risks and rollback implications;
+   - which option you recommend and why.
+4. If the maintainer gives a clear decision, record it in `STATUS.md` or `PLAN.md`, then continue the task from the last safe checkpoint.
+5. If no decision is available, leave the repository clean, preserve all findings in project files, and hand off the exact next question.
+
+Examples that require a Decision Gate:
+
+- `main` changed release direction relative to the planned merge.
+- A stable rollback line conflicts with a new feature release line.
+- A fix requires changing authentication, secret handling, or public API behavior.
+- A deployment change could affect existing users or data.
+
 During work, keep the project files current whenever there is a meaningful intermediate result:
 
 - tests/checks run or intentionally skipped;

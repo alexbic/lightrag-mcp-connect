@@ -22,6 +22,7 @@ Managed backend mode is the current release track. The public connector reposito
 - Added task decomposition rule for large or risky work.
 - Added skills/tools check rule before specialized work.
 - Added fix-and-verification loop rule for agents.
+- Added Decision Gate rule for product/release/security/deployment-direction blockers.
 - Verified MCP checks: 29 passed, mypy clean, black clean.
 - Verified gateway checks: 8 passed, 1 skipped, mypy clean, black clean.
 - Verified `deploy/docker-compose.gateway.yml`, `deploy/docker-compose.yml`, `deploy/docker-compose.full-example.yml`, and `deploy/docker-compose.traefik.yml` config.
@@ -43,3 +44,4 @@ Managed backend mode is the current release track. The public connector reposito
 - Decompose future large tasks into independently testable backlog items before implementation.
 - Check applicable skills/tools before manual specialized workflows; propose a reusable skill when a workflow repeats.
 - Use the fix-and-verification loop before declaring future verification blockers.
+- Use the Decision Gate when a blocker requires maintainer choice instead of technical troubleshooting.
