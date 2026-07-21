@@ -1,12 +1,12 @@
 # Backlog
 
 ## To Do
-- [ ] @backend: Merge `feature/workspace-gateway` into `main` — DoD: clean merge, relevant checks pass, `main` pushed, project state files updated.
 - [ ] @devops: Prepare deployment example switch to gateway-mode — DoD: MCP uses `LIGHTRAG_GATEWAY_URL`, not `LIGHTRAG_BASE_URL`.
 - [ ] @qa: Verify admin tools through MCP — DoD: admin sees tools; normal workspace key does not.
 - [ ] @docs: Document first-time setup flow for managed backend mode — DoD: README has copy/paste path.
 
 ## In Progress
+- [ ] @backend: Merge `feature/workspace-gateway` into `main` — DoD: clean merge, relevant checks pass, `main` pushed, project state files updated.
 - [ ] @backend: Managed backend hardening and project readability cleanup — started 2026-07-21.
 
 ## Review

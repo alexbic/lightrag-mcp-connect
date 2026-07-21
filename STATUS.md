@@ -1,6 +1,6 @@
 # Status: LightRAG MCP Gateway
 
-**Updated:** 2026-07-21T20:05:00Z
+**Updated:** 2026-07-21T20:20:00Z
 
 ## Summary
 Managed backend mode is the current release track. The public connector repository owns both `mcp/app` and `gateway/app`; deployments should consume released versions from this repository instead of copying connector source into separate deployment repositories.
@@ -30,13 +30,13 @@ Managed backend mode is the current release track. The public connector reposito
 - Refreshed README and Compose release pins from `v1.1.0` to `v1.3.0`.
 
 ## In Work
-- Merge preparation for `feature/workspace-gateway` into `main`.
+- Executing `PLAN.md` "Next Safe Merge Step" to merge `feature/workspace-gateway` into `main`.
 
 ## Blockers
-- None known for managed backend code.
+- None known yet; stop immediately if the worktree becomes dirty, `origin/main` changed in a way that affects release/deployment assumptions, merge conflicts are non-obvious, or verification cannot be restored.
 
 ## Next
-- Follow `PLAN.md` "Next Safe Merge Step" to merge `feature/workspace-gateway` into `main`.
+- Continue `PLAN.md` "Next Safe Merge Step": fetch and inspect `origin/main`, merge into local `main` only if divergence is safe, then run full verification and push.
 - Stop before merge if the worktree is dirty, remote `main` changed unexpectedly, conflicts are non-obvious, or verification cannot pass.
 - Keep `BACKLOG.md` and `STATUS.md` updated before and during future repository work so interrupted sessions can be resumed safely.
 - Decompose future large tasks into independently testable backlog items before implementation.
