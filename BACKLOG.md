@@ -1,8 +1,7 @@
 # Backlog
 
 ## To Do
-- [ ] @backend: Resolve pending public `lightrag-mcp-connect` `feature/workspace-gateway` changes — DoD: no dirty worktree, tests pass.
-- [ ] @backend: Decide release tag for managed gateway-aware MCP — DoD: tag exists and deployment examples can pin it.
+- [ ] @backend: Merge `feature/workspace-gateway` into `main` — DoD: clean merge, relevant checks pass, `main` pushed, project state files updated.
 - [ ] @devops: Prepare deployment example switch to gateway-mode — DoD: MCP uses `LIGHTRAG_GATEWAY_URL`, not `LIGHTRAG_BASE_URL`.
 - [ ] @qa: Verify admin tools through MCP — DoD: admin sees tools; normal workspace key does not.
 - [ ] @docs: Document first-time setup flow for managed backend mode — DoD: README has copy/paste path.
@@ -14,6 +13,8 @@
 - [ ] @qa: Review `LIGHTRAG_ADMIN_KEY` naming and docs for first-time user clarity.
 
 ## Done
+- [x] @backend: Resolve pending public `lightrag-mcp-connect` `feature/workspace-gateway` changes — DoD: no dirty worktree, tests pass.
+- [x] @backend: Decide release tag for managed gateway-aware MCP — DoD: tag exists and deployment examples can pin it.
 - [x] @docs: Add recoverable task-state protocol for agents — DoD: `AGENTS.md` explains how to record start, progress, blockers, checks, and handoff.
 - [x] @docs: Add task decomposition rule for agents — DoD: `AGENTS.md` requires sizing tasks and splitting large work into independently testable items.
 - [x] @docs: Add skills/tools check rule for agents — DoD: `AGENTS.md` tells agents to use applicable existing skills/tools or propose a reusable skill for repeated workflows.
