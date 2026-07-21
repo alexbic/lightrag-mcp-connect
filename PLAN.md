@@ -26,10 +26,10 @@
 ### Next Safe Merge Step
 **Goal:** Land the verified `feature/workspace-gateway` branch into `main` without losing release/history context.
 
-**Current blocker (2026-07-21):**
-- `origin/main` currently points to `2b555bc` (`revert: restore stable v1.1.0 without workspace routing`).
-- Treat that revert as a release-direction change, not as an ordinary fast-forward target.
-- Do not continue the merge sequence until maintainers decide whether `main` stays on the restored stable line or resumes the managed backend track.
+**Decision Gate resolution (2026-07-21):**
+- `main` resumes the managed gateway track.
+- The reverted stable line remains available to legacy users by pinning `v1.1.0`.
+- Continue the merge sequence, but still stop if `origin/main` changes again in a way that affects release or deployment assumptions.
 
 **Pre-checks:**
 - Confirm current branch is `feature/workspace-gateway`.

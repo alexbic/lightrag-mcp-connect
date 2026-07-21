@@ -6,13 +6,14 @@
 - [ ] @docs: Document first-time setup flow for managed backend mode — DoD: README has copy/paste path.
 
 ## In Progress
+- [ ] @backend: Merge `feature/workspace-gateway` into `main` — DoD: clean merge, relevant checks pass, `main` pushed, project state files updated.
 - [ ] @backend: Managed backend hardening and project readability cleanup — started 2026-07-21.
 
 ## Review
-- [ ] @backend: Reconcile `main` release direction before merging `feature/workspace-gateway` — DoD: decide whether `main` should stay on reverted stable `v1.1.0` line or accept the managed gateway track, then rerun safe merge pre-checks.
 - [ ] @qa: Review `LIGHTRAG_ADMIN_KEY` naming and docs for first-time user clarity.
 
 ## Done
+- [x] @backend: Reconcile `main` release direction before merging `feature/workspace-gateway` — DoD: decision recorded that `main` resumes the managed gateway track while legacy users pin `v1.1.0`, then rerun safe merge pre-checks.
 - [x] @backend: Resolve pending public `lightrag-mcp-connect` `feature/workspace-gateway` changes — DoD: no dirty worktree, tests pass.
 - [x] @backend: Decide release tag for managed gateway-aware MCP — DoD: tag exists and deployment examples can pin it.
 - [x] @docs: Add recoverable task-state protocol for agents — DoD: `AGENTS.md` explains how to record start, progress, blockers, checks, and handoff.

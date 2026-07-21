@@ -46,4 +46,4 @@ Run one LightRAG endpoint that supports many isolated workspaces without adding 
 
 ## Open Questions
 - Should hosted deployments use a dedicated `LIGHTRAG_ADMIN_KEY` distinct from legacy `LIGHTRAG_API_KEY` before MCP gateway-mode rollout?
-- What release version should carry the public managed backend mode: `v1.3.1` or `v1.4.0`?
+- The public managed backend track resumes on `main`; legacy users who need the old simple-mode behavior should pin `v1.1.0`.
