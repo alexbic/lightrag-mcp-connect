@@ -1,0 +1,64 @@
+# =====================================================
+# Simple mode: MCP → LightRAG directly (no workspace routing)
+# =====================================================
+#
+# Single workspace mode — all tools talk to LightRAG directly with
+# LIGHTRAG_API_KEY. No workspace gateway, no multi-tenancy. This is the
+# legacy behavior (back compatible with existing deployments).
+#
+# Use this when:
+# - You're testing locally or have a single-use LightRAG instance
+# - You don't need workspace isolation or multi-tenancy
+# - You want the simplest possible setup
+#
+# ENV VARS (set in .env or pass via docker run):
+#   LIGHTRAG_BASE_URL — LightRAG instance URL (default: http://lightrag:9621)
+#   LIGHTRAG_API_KEY — LightRAG API key (required)
+#   LIGHTRAG_FILE_PATH_ROOT — Optional root for file_path uploads
+#   LIGHTRAG_MCP_INSTRUCTIONS_FILE — Optional instructions file path
+#
+# To start: docker compose -f docker-compose.simple.yml up -d
+# =====================================================
+
+services:
+  lightrag:
+    image: ghcr.io/hkuds/lightrag:latest
+    container_name: lightrag
+    volumes:
+      - lightrag-storage:/app/data/rag_storage
+      - lightrag-inputs:/app/data/inputs
+    environment:
+      # LLM + embedding config (set these in your environment)
+      - LLM_BINDING=${LLM_BINDING:-openai}
+      - LLM_MODEL=${LLM_MODEL:-gpt-4o-mini}
+      - LLM_BINDING_API_KEY=${LLM_BINDING_API_KEY}
+      - EMBEDDING_BINDING=${EMBEDDING_BINDING:-openai}
+      - EMBEDDING_MODEL=${EMBEDDING_MODEL:-text-embedding-3-small}
+      - EMBEDDING_BINDING_API_KEY=${EMBEDDING_BINDING_API_KEY}
+      - LIGHTRAG_API_KEY=${LIGHTRAG_API_KEY}
+    restart: unless-stopped
+
+  lightrag-mcp:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    container_name: lightrag-mcp
+    environment:
+      # Direct mode: no gateway, talk to LightRAG
+      - LIGHTRAG_BASE_URL=http://lightrag:9621
+      - LIGHTRAG_API_KEY=${LIGHTRAG_API_KEY}
+      # Optional: file_path uploads from a trusted local directory
+      - LIGHTRAG_FILE_PATH_ROOT=${LIGHTRAG_FILE_PATH_ROOT:-}
+      # Optional: agent instructions injected at handshake
+      - LIGHTRAG_MCP_INSTRUCTIONS_FILE=${LIGHTRAG_MCP_INSTRUCTIONS_FILE:-}
+    depends_on:
+      - lightrag
+    restart: unless-stopped
+
+volumes:
+  lightrag-storage:
+  lightrag-inputs:
+
+networks:
+  default:
+    name: lightrag-mcp-net

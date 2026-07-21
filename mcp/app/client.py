@@ -3,6 +3,7 @@ LightRAG API client for MCP server integration.
 """
 
 import asyncio
+import contextvars
 import ipaddress
 import json
 import logging
@@ -10,6 +11,37 @@ import socket
 from typing import Any, Dict, List, Optional, AsyncGenerator, Type
 from urllib.parse import unquote, urljoin, urlparse
 import httpx
+
+# Per-request API key override. When set (by the tool dispatcher), every
+# LightRAG request made on the current async task carries this key as
+# X-API-Key instead of the client's own default. This is what lets one
+# shared client/connection-pool route different MCP calls to different
+# workspaces (a per-call api_key passed in the tool arguments overrides
+# the operator's env key). ContextVar gives per-async-task isolation, so
+# concurrent requests stay independent.
+_REQUEST_API_KEY: "contextvars.ContextVar[Optional[str]]" = contextvars.ContextVar(
+    "lightrag_request_api_key", default=None
+)
+
+
+def set_request_api_key(key: Optional[str]) -> "contextvars.Token[Optional[str]]":
+    """Bind a per-call api key. Reset with the returned token in a finally block."""
+    return _REQUEST_API_KEY.set(key)
+
+
+def reset_request_api_key(
+    token: "contextvars.Token[Optional[str]]",
+) -> None:
+    """Restore the prior api-key binding (companion to :func:`set_request_api_key`)."""
+    _REQUEST_API_KEY.reset(token)
+
+
+def _per_request_headers() -> Optional[Dict[str, str]]:
+    """Headers to merge onto the client's defaults for this request, if any."""
+    key = _REQUEST_API_KEY.get()
+    return {"X-API-Key": key} if key else None
+
+
 from .models import (
     # Request models
     InsertTextRequest,
@@ -221,18 +253,23 @@ class LightRAGClient:
             self.logger.debug("Request query fields: %s", sorted(params))
 
         try:
+            headers = _per_request_headers()
             if method.upper() == "GET":
-                response = await self.client.get(url, params=params)
+                response = await self.client.get(url, params=params, headers=headers)
             elif method.upper() == "POST":
                 if files:
-                    response = await self.client.post(url, data=data, files=files)
+                    response = await self.client.post(
+                        url, data=data, files=files, headers=headers
+                    )
                 else:
-                    response = await self.client.post(url, json=data)
+                    response = await self.client.post(url, json=data, headers=headers)
             elif method.upper() == "DELETE":
                 if data:
-                    response = await self.client.request("DELETE", url, json=data)
+                    response = await self.client.request(
+                        "DELETE", url, json=data, headers=headers
+                    )
                 else:
-                    response = await self.client.delete(url)
+                    response = await self.client.delete(url, headers=headers)
             else:
                 error_msg = f"Unsupported HTTP method: {method}"
                 self.logger.error(error_msg)
@@ -294,7 +331,9 @@ class LightRAGClient:
             self.logger.debug("Streaming request JSON fields: %s", sorted(data))
 
         try:
-            async with self.client.stream(method, url, json=data) as response:
+            async with self.client.stream(
+                method, url, json=data, headers=_per_request_headers()
+            ) as response:
                 self.logger.debug(f"Streaming response status: {response.status_code}")
                 response.raise_for_status()
 

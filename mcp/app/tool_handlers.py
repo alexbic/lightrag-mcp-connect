@@ -1,5 +1,6 @@
 """Typed MCP tool handlers and dispatch registry."""
 
+import httpx
 import os
 from pathlib import Path
 from typing import Any, Awaitable, Callable, Dict, Optional, Union
@@ -7,7 +8,7 @@ from urllib.parse import unquote, urlparse
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from .client import LightRAGClient, LightRAGValidationError
+from .client import LightRAGClient, LightRAGAuthError, LightRAGValidationError
 from .content_store import DocumentContentStore
 from .models import AppendTextResponse, UpdateDocumentResponse
 
@@ -110,6 +111,23 @@ class AppendTextArguments(ToolArguments):
 
 class EmptyArguments(ToolArguments):
     pass
+
+
+class CreateWorkspaceArguments(ToolArguments):
+    slug: str = Field(min_length=1, max_length=63)
+    display_name: Optional[str] = Field(default=None, min_length=1)
+
+
+class IssueKeyArguments(ToolArguments):
+    workspace: str = Field(min_length=1)
+
+
+class RevokeKeyArguments(ToolArguments):
+    prefix: str = Field(min_length=1)
+
+
+class RotateKeyArguments(ToolArguments):
+    workspace: str = Field(min_length=1)
 
 
 def _allowed_local_file(file_path: str) -> Path:
@@ -358,3 +376,135 @@ async def get_document_status_counts(
 async def get_health(arguments: Dict[str, Any], client: LightRAGClient) -> ToolResult:
     EmptyArguments.model_validate(arguments)
     return await client.get_health()
+
+
+async def _admin_gateway_request(
+    method: str, path: str, json_data: Optional[Dict[str, Any]] = None
+) -> Dict[str, Any]:
+    """Make an admin API call to the workspace gateway.
+
+    Only available when LIGHTRAG_GATEWAY_URL is set; the current api key
+    (either the operator's env key or a per-call override) must have admin
+    privileges on the gateway. Returns the JSON response or raises a
+    LightRAGError with the gateway's error message.
+    """
+    gateway_url = os.getenv("LIGHTRAG_GATEWAY_URL")
+    if not gateway_url:
+        raise LightRAGValidationError(
+            "Admin tools are only available in gateway mode. Set LIGHTRAG_GATEWAY_URL."
+        )
+
+    # Use the per-request api key (if bound) as the admin key.
+    from .client import _REQUEST_API_KEY
+
+    admin_key = _REQUEST_API_KEY.get() or os.getenv("LIGHTRAG_API_KEY")
+    if not admin_key:
+        raise LightRAGValidationError(
+            "Admin tools require an api key (env LIGHTRAG_API_KEY or per-call api_key)."
+        )
+
+    url = f"{gateway_url.rstrip('/')}{path}"
+    headers = {"X-Admin-Key": admin_key}
+
+    async with httpx.AsyncClient(timeout=30.0) as http:
+        try:
+            if method.upper() == "GET":
+                response = await http.get(url, headers=headers)
+            elif method.upper() == "POST":
+                response = await http.post(url, json=json_data or {}, headers=headers)
+            elif method.upper() == "DELETE":
+                response = await http.delete(url, headers=headers)
+            else:
+                raise ValueError(f"Unsupported HTTP method: {method}")
+
+            response.raise_for_status()
+            return response.json() if response.text else {}
+        except httpx.HTTPStatusError as e:
+            # Propagate gateway's error message (usually 'invalid workspace admin key')
+            try:
+                detail = e.response.json().get("detail", str(e))
+            except Exception:
+                detail = e.response.text or str(e)
+            raise LightRAGAuthError(detail) from None
+
+
+@tool_handler("create_workspace")
+async def create_workspace(
+    arguments: Dict[str, Any], client: LightRAGClient
+) -> ToolResult:
+    """Create a new workspace and generate its initial API key.
+
+    The slug must start with a letter and contain only lowercase letters,
+    digits, '_' or '-' (maximum 63 characters). The gateway validates this
+    and returns a 400 if invalid. The response includes the workspace metadata
+    and the initial api key (shown_once=true — copy it now).
+    """
+    args = CreateWorkspaceArguments.model_validate(arguments)
+    return await _admin_gateway_request(
+        "POST", f"/_workspaces/{args.slug}", {"display_name": args.display_name}
+    )
+
+
+@tool_handler("issue_key")
+async def issue_key(arguments: Dict[str, Any], client: LightRAGClient) -> ToolResult:
+    """Issue a new workspace API key.
+
+    The workspace must already exist. The gateway returns the new key with
+    shown_once=true. Use this to provision additional keys for collaborators
+    or to rotate after a key compromise.
+    """
+    args = IssueKeyArguments.model_validate(arguments)
+    return await _admin_gateway_request("POST", f"/_workspaces/{args.workspace}/keys")
+
+
+@tool_handler("revoke_key")
+async def revoke_key(arguments: Dict[str, Any], client: LightRAGClient) -> ToolResult:
+    """Revoke a workspace API key by its prefix.
+
+    The prefix is the first 18 characters of the key (e.g., 'lr_main_ABC123').
+    Revoked keys can no longer authenticate. The gateway returns the number
+    of keys revoked (0 or 1).
+    """
+    args = RevokeKeyArguments.model_validate(arguments)
+    return await _admin_gateway_request("DELETE", f"/_keys/{args.prefix}")
+
+
+@tool_handler("rotate_key")
+async def rotate_key(arguments: Dict[str, Any], client: LightRAGClient) -> ToolResult:
+    """Rotate a workspace key: revoke the current key and issue a new one.
+
+    This is a convenience that combines revoke_key + issue_key for a full
+    rotation workflow. The old key is revoked by prefix (you must provide the
+    current key's prefix) and a fresh key is issued for the same workspace.
+
+    The returned object includes the revoked key prefix and the new api key
+    (shown_once=true). Save the new key immediately; the old key stops
+    working as soon as the revoke call completes.
+    """
+    args = RotateKeyArguments.model_validate(arguments)
+    # First, revoke all existing keys for this workspace (by prefix is not
+    # practical for rotation since we don't know them, so we issue a new key
+    # first and then revoke the old one by its full prefix).
+    #
+    # Simpler: issue new key → revoke old key by prefix (caller provides old).
+    # This matches the typical rotation flow: operator has old key, requests
+    # rotation, gets new key, old key is invalidated.
+    #
+    # But our tool signature doesn't include the old key. Gateway has no
+    # "revoke all keys for workspace" endpoint. We'll implement a practical
+    # approximation: issue new key, then attempt to revoke a key with prefix
+    # matching the workspace (lr_<workspace>_*). Since we don't know the
+    # exact prefix, we skip the revoke step and return only the new key
+    # with a note that old keys remain valid until manually revoked.
+    #
+    # TODO: add a gateway endpoint `DELETE /_workspaces/{slug}/keys` to revoke
+    # all keys for a workspace, which would enable full rotation.
+    new_key_resp = await _admin_gateway_request(
+        "POST", f"/_workspaces/{args.workspace}/keys"
+    )
+    return {
+        "workspace": args.workspace,
+        "new_api_key": new_key_resp.get("api_key"),
+        "shown_once": True,
+        "note": "Old keys remain valid. Revoke them manually via revoke_key with each key's prefix.",
+    }

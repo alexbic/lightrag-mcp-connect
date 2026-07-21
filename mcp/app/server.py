@@ -18,6 +18,32 @@ from mcp.types import (
     Tool,
 )
 
+
+def load_instructions() -> str:
+    """Load the server instructions from a file, if configured.
+
+    Reads the file path from LIGHTRAG_MCP_INSTRUCTIONS_FILE and returns
+    its contents as UTF-8 text. If the env var is unset or the file does
+    not exist, returns an empty string (no instructions injected).
+
+    The instructions file is plain markdown; the MCP client injects it into
+    the agent's system prompt once during handshake. Use this to give
+    agents workspace-aware conventions (naming rules, what to save, etc.)
+    without editing Claude Desktop / Claude Code configs on every machine.
+    """
+    path = os.getenv("LIGHTRAG_MCP_INSTRUCTIONS_FILE")
+    if not path:
+        return ""
+    try:
+        return Path(path).read_text(encoding="utf-8")
+    except Exception:
+        # If the file is missing or unreadable, log and return empty rather
+        # than blocking server startup. Instructions are a convenience, not a
+        # requirement.
+        logger.warning("Failed to read instructions file: %s", path)
+        return ""
+
+
 from .client import (
     LightRAGClient,
     LightRAGError,
@@ -27,6 +53,8 @@ from .client import (
     LightRAGAPIError,
     LightRAGTimeoutError,
     LightRAGServerError,
+    set_request_api_key,
+    reset_request_api_key,
 )
 from .tool_handlers import TOOL_HANDLERS
 
@@ -82,6 +110,9 @@ server = Server("lightrag-mcp-connect")
 
 # Global client instance
 lightrag_client: Optional[LightRAGClient] = None
+
+# Cached admin-key check result for the current env key (probed once per process)
+_is_admin_cache: Optional[bool] = None
 
 # LightRAG's own DocumentManager.supported_extensions is computed dynamically
 # from its registered parser engines (lightrag/parser/registry.py) — there's
@@ -789,6 +820,145 @@ async def handle_list_tools() -> List[Tool]:  # ListToolsResult:
         ]
     )
 
+    # Workspace Admin Tools (4 tools) — gateway mode only, admin-key required
+    admin_tools = [
+        Tool(
+            name="create_workspace",
+            description=(
+                "Create a new workspace and generate its initial API key. "
+                "The slug must start with a letter and contain only lowercase "
+                "letters, digits, '_' or '-' (max 63 chars). Returns workspace "
+                "metadata and the initial api key (shown_once=true). Only "
+                "available in gateway mode with an admin key."
+            ),
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "slug": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 63,
+                        "pattern": "^[a-z][a-z0-9_-]{0,62}$",
+                        "description": "Workspace identifier (lowercase, starts with letter)",
+                    },
+                    "display_name": {
+                        "type": "string",
+                        "minLength": 1,
+                        "description": "Human-readable name (optional, defaults to slug)",
+                    },
+                },
+                "required": ["slug"],
+            },
+        ),
+        Tool(
+            name="issue_key",
+            description=(
+                "Issue a new workspace API key. The workspace must exist. "
+                "Returns the new key with shown_once=true. Use this to provision "
+                "additional keys or after a compromise. Gateway mode, admin key "
+                "only."
+            ),
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "workspace": {
+                        "type": "string",
+                        "minLength": 1,
+                        "description": "Workspace slug to issue a key for",
+                    }
+                },
+                "required": ["workspace"],
+            },
+        ),
+        Tool(
+            name="revoke_key",
+            description=(
+                "Revoke a workspace API key by its prefix (first 18 chars, e.g. "
+                "'lr_main_ABC123'). Revoked keys can no longer authenticate. "
+                "Returns the number of keys revoked (0 or 1). Gateway mode, admin "
+                "key only."
+            ),
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "prefix": {
+                        "type": "string",
+                        "minLength": 1,
+                        "description": "Key prefix to revoke (first 18 characters)",
+                    }
+                },
+                "required": ["prefix"],
+            },
+        ),
+        Tool(
+            name="rotate_key",
+            description=(
+                "Rotate a workspace key: issue a new key for the workspace. "
+                "(Full revoke+issue is not implemented yet; old keys remain valid "
+                "until manually revoked via revoke_key.) Returns the new api key "
+                "with shown_once=true. Gateway mode, admin key only."
+            ),
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "workspace": {
+                        "type": "string",
+                        "minLength": 1,
+                        "description": "Workspace slug to rotate a key for",
+                    }
+                },
+                "required": ["workspace"],
+            },
+        ),
+    ]
+
+    # Dynamic admin-tools visibility: only expose admin tools in gateway mode
+    # when the env key (or per-call override) has admin privileges. Simple
+    # mode = no admin tools (the gateway endpoints don't exist).
+    gateway_url = os.getenv("LIGHTRAG_GATEWAY_URL")
+    admin_key = os.getenv("LIGHTRAG_API_KEY")
+    show_admin = False
+
+    if gateway_url and admin_key:
+        # Probe gateway's /_workspaces endpoint with X-Admin-Key. A 200
+        # response means the key is an admin key; 401 means unauthorized.
+        # Cache the result globally so we only check once per process.
+        global _is_admin_cache
+        if _is_admin_cache is None:
+            import httpx
+
+            try:
+                async with httpx.AsyncClient(timeout=5.0) as http:
+                    response = await http.get(
+                        f"{gateway_url.rstrip('/')}/_workspaces",
+                        headers={"X-Admin-Key": admin_key},
+                    )
+                    # 200 = admin, 401 = not admin, other = treat as not admin
+                    show_admin = response.status_code == 200
+                    _is_admin_cache = show_admin
+                    logger.info(
+                        "Gateway admin check: %s (status %d)",
+                        "admin" if show_admin else "not admin",
+                        response.status_code,
+                    )
+            except Exception as exc:
+                # Network/timeout errors = assume not admin, don't block startup
+                logger.warning("Gateway admin check failed: %s", exc)
+                _is_admin_cache = False
+        else:
+            show_admin = _is_admin_cache
+
+    if show_admin:
+        tools.extend(admin_tools)
+        logger.info("Admin tools exposed: current key is gateway admin")
+    else:
+        if gateway_url:
+            logger.info(
+                "Admin tools hidden: gateway mode but key is not admin (or check failed)"
+            )
+        else:
+            logger.info("Admin tools hidden: not in gateway mode")
+
     logger.info("TOOLS CREATION COMPLETED:")
     logger.info(f"  - Total tools created: {len(tools)}")
     logger.info(f"  - Tools list type: {type(tools)}")
@@ -968,14 +1138,31 @@ async def handle_list_tools() -> List[Tool]:  # ListToolsResult:
 
 
 def _get_lightrag_client() -> LightRAGClient:
-    """Create the shared API client lazily from non-secret configuration."""
+    """Create the shared API client lazily from non-secret configuration.
+
+    Mode selection: if ``LIGHTRAG_GATEWAY_URL`` is set, all traffic goes to the
+    workspace gateway (which validates the key and routes to a workspace); the
+    operator's env ``LIGHTRAG_API_KEY`` is then the superadmin key. Otherwise
+    the client talks to LightRAG directly with that same key (simple/legacy
+    mode, one workspace). The shared connection pool is identical in both
+    modes; per-call workspace routing is handled by a request-scoped key
+    override (see :func:`set_request_api_key`), not by swapping clients.
+    """
     global lightrag_client
     if lightrag_client is None:
+        gateway_url = os.getenv("LIGHTRAG_GATEWAY_URL")
+        base_url: str = (
+            gateway_url or os.getenv("LIGHTRAG_BASE_URL") or "http://localhost:9621"
+        )
         lightrag_client = LightRAGClient(
-            base_url=os.getenv("LIGHTRAG_BASE_URL", "http://localhost:9621"),
+            base_url=base_url,
             api_key=os.getenv("LIGHTRAG_API_KEY"),
             timeout=float(os.getenv("LIGHTRAG_TIMEOUT", "30.0")),
         )
+        if gateway_url:
+            logger.info("Gateway mode: routing through %s", gateway_url)
+        else:
+            logger.info("Simple mode: talking to LightRAG directly at %s", base_url)
     return lightrag_client
 
 
@@ -990,13 +1177,23 @@ async def handle_call_tool_refactored(
             LightRAGValidationError(f"Unknown tool: {tool_name}"), tool_name
         )
 
+    # ``api_key`` is a routing meta-parameter, not a tool argument: it lets a
+    # caller target a specific workspace in gateway mode by passing that
+    # workspace's key. Strip it before validation (the typed argument models
+    # use extra="forbid") and bind it to the current async task so the shared
+    # client carries it as a per-request X-API-Key header.
+    call_arguments = dict(arguments or {})
+    per_call_key = call_arguments.pop("api_key", None)
+    token = set_request_api_key(per_call_key)
     try:
-        result = await handler(arguments or {}, _get_lightrag_client())
+        result = await handler(call_arguments, _get_lightrag_client())
         logger.info("Tool %s completed successfully", tool_name)
         return _create_success_response(result, tool_name)
     except Exception as error:
         logger.error("Tool %s failed: %s", tool_name, type(error).__name__)
         return _create_error_response(error, tool_name)
+    finally:
+        reset_request_api_key(token)
 
 
 async def main() -> None:
@@ -1051,8 +1248,15 @@ async def main() -> None:
                 server_name="lightrag-mcp-connect",
                 server_version="1.1.0",
                 capabilities=capabilities,
+                instructions=load_instructions(),
             )
             logger.info(f"INITIALIZATION OPTIONS:")
+            logger.info(
+                f"  - Instructions length: {len(init_options.instructions) if init_options.instructions else 0}"
+            )
+            logger.info(
+                f"  - Instructions preview: {init_options.instructions[:200] if init_options.instructions else '(none)'}"
+            )
             logger.info(f"  - Init options: {init_options}")
             logger.info(f"  - Init options type: {type(init_options)}")
 
