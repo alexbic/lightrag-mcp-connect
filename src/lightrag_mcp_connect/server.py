@@ -85,6 +85,9 @@ server = Server("lightrag-mcp-connect")
 # Global client instance
 lightrag_client: Optional[LightRAGClient] = None
 
+# Cached admin-key check result for the current env key (probed once per process)
+_is_admin_cache: Optional[bool] = None
+
 # LightRAG's own DocumentManager.supported_extensions is computed dynamically
 # from its registered parser engines (lightrag/parser/registry.py) — there's
 # no static constant to import across the process/container boundary, so
@@ -790,6 +793,145 @@ async def handle_list_tools() -> List[Tool]:  # ListToolsResult:
             ),
         ]
     )
+
+    # Workspace Admin Tools (4 tools) — gateway mode only, admin-key required
+    admin_tools = [
+        Tool(
+            name="create_workspace",
+            description=(
+                "Create a new workspace and generate its initial API key. "
+                "The slug must start with a letter and contain only lowercase "
+                "letters, digits, '_' or '-' (max 63 chars). Returns workspace "
+                "metadata and the initial api key (shown_once=true). Only "
+                "available in gateway mode with an admin key."
+            ),
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "slug": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 63,
+                        "pattern": "^[a-z][a-z0-9_-]{0,62}$",
+                        "description": "Workspace identifier (lowercase, starts with letter)",
+                    },
+                    "display_name": {
+                        "type": "string",
+                        "minLength": 1,
+                        "description": "Human-readable name (optional, defaults to slug)",
+                    },
+                },
+                "required": ["slug"],
+            },
+        ),
+        Tool(
+            name="issue_key",
+            description=(
+                "Issue a new workspace API key. The workspace must exist. "
+                "Returns the new key with shown_once=true. Use this to provision "
+                "additional keys or after a compromise. Gateway mode, admin key "
+                "only."
+            ),
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "workspace": {
+                        "type": "string",
+                        "minLength": 1,
+                        "description": "Workspace slug to issue a key for",
+                    }
+                },
+                "required": ["workspace"],
+            },
+        ),
+        Tool(
+            name="revoke_key",
+            description=(
+                "Revoke a workspace API key by its prefix (first 18 chars, e.g. "
+                "'lr_main_ABC123'). Revoked keys can no longer authenticate. "
+                "Returns the number of keys revoked (0 or 1). Gateway mode, admin "
+                "key only."
+            ),
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "prefix": {
+                        "type": "string",
+                        "minLength": 1,
+                        "description": "Key prefix to revoke (first 18 characters)",
+                    }
+                },
+                "required": ["prefix"],
+            },
+        ),
+        Tool(
+            name="rotate_key",
+            description=(
+                "Rotate a workspace key: issue a new key for the workspace. "
+                "(Full revoke+issue is not implemented yet; old keys remain valid "
+                "until manually revoked via revoke_key.) Returns the new api key "
+                "with shown_once=true. Gateway mode, admin key only."
+            ),
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "workspace": {
+                        "type": "string",
+                        "minLength": 1,
+                        "description": "Workspace slug to rotate a key for",
+                    }
+                },
+                "required": ["workspace"],
+            },
+        ),
+    ]
+
+    # Dynamic admin-tools visibility: only expose admin tools in gateway mode
+    # when the env key (or per-call override) has admin privileges. Simple
+    # mode = no admin tools (the gateway endpoints don't exist).
+    gateway_url = os.getenv("LIGHTRAG_GATEWAY_URL")
+    admin_key = os.getenv("LIGHTRAG_API_KEY")
+    show_admin = False
+
+    if gateway_url and admin_key:
+        # Probe gateway's /_workspaces endpoint with X-Admin-Key. A 200
+        # response means the key is an admin key; 401 means unauthorized.
+        # Cache the result globally so we only check once per process.
+        global _is_admin_cache
+        if _is_admin_cache is None:
+            import httpx
+
+            try:
+                async with httpx.AsyncClient(timeout=5.0) as http:
+                    response = await http.get(
+                        f"{gateway_url.rstrip('/')}/_workspaces",
+                        headers={"X-Admin-Key": admin_key},
+                    )
+                    # 200 = admin, 401 = not admin, other = treat as not admin
+                    show_admin = response.status_code == 200
+                    _is_admin_cache = show_admin
+                    logger.info(
+                        "Gateway admin check: %s (status %d)",
+                        "admin" if show_admin else "not admin",
+                        response.status_code,
+                    )
+            except Exception as exc:
+                # Network/timeout errors = assume not admin, don't block startup
+                logger.warning("Gateway admin check failed: %s", exc)
+                _is_admin_cache = False
+        else:
+            show_admin = _is_admin_cache
+
+    if show_admin:
+        tools.extend(admin_tools)
+        logger.info("Admin tools exposed: current key is gateway admin")
+    else:
+        if gateway_url:
+            logger.info(
+                "Admin tools hidden: gateway mode but key is not admin (or check failed)"
+            )
+        else:
+            logger.info("Admin tools hidden: not in gateway mode")
 
     logger.info("TOOLS CREATION COMPLETED:")
     logger.info(f"  - Total tools created: {len(tools)}")

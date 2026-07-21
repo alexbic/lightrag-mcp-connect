@@ -27,11 +27,23 @@ def processed_document(filename: str = "notes.md") -> DocumentInfo:
 async def test_advertised_tools_have_registered_handlers() -> None:
     tools = await handle_list_tools()
     advertised = {tool.name for tool in tools}
-    assert advertised == set(TOOL_HANDLERS)
+    # All advertised tools must have registered handlers
+    assert advertised.issubset(TOOL_HANDLERS), "Advertised tools without handlers"
     assert not {"insert_text", "insert_texts"} & advertised
     for name in ("upload_document", "update_document", "append_text"):
         schema = next(tool.inputSchema for tool in tools if tool.name == name)
         assert next(iter(schema["properties"])) == "filename"
+
+    # Admin tools are only advertised in gateway mode with an admin key.
+    # Handlers exist regardless (for gateway activations), so we don't
+    # require exact equality — just that unadvertised handlers are either
+    # admin tools or we're in simple mode.
+    admin_tools = {"create_workspace", "issue_key", "revoke_key", "rotate_key"}
+    unadvertised = set(TOOL_HANDLERS) - advertised
+    if unadvertised:
+        # If anything is missing from the advertised list, it must be admin tools
+        # (and we're likely running in simple mode without LIGHTRAG_GATEWAY_URL).
+        assert unadvertised.issubset(admin_tools), f"Unadvertised non-admin tools: {unadvertised}"
 
 
 @pytest.mark.asyncio
