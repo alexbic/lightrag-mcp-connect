@@ -20,8 +20,23 @@ Read only what you need from long implementation files after this orientation.
 - Use `LIGHTRAG_ADMIN_KEY` for the owner/admin key name.
 - Keep `LIGHTRAG_SERVER_KEY` internal only.
 - Never print secrets, raw deployment env, API keys, passwords, tokens, or signed URLs.
+- Because this is a public repository, do not write personal, customer-specific, internal-server, private-domain, private-IP, organization, or family/project-specific details into committed instruction files. Use generic examples such as `example workspace`, `hosted deployment`, and `self-hoster`.
 - For hosted deployment work, inspect the current configuration read-only first and avoid exposing environment values.
 - When deploying a new commit, use the deployment platform's build/deploy action; do not assume a restart automatically uses the latest source.
+
+## New Repository Bootstrap
+When starting work in another repository, check whether it has this project-state structure:
+
+- `AGENTS.md`
+- `PROJECT.md`
+- `SPEC.md`
+- `PLAN.md`
+- `ROADMAP.md`
+- `BACKLOG.md`
+- `STATUS.md`
+- `TECH_STACK.md`
+
+If the structure is missing, review the repository first, create the files with repository-appropriate content, and then continue the implementation work using those files as the shared operating context.
 
 ## Keep Project Files Current
 Any non-trivial change must update the project state files in the same work session.
