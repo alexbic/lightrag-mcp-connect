@@ -177,8 +177,26 @@ docker compose -f deploy/docker-compose.gateway.yml up -d
 **Admin workflow:**
 1. Connect with `LIGHTRAG_API_KEY` (superadmin) → sees all workspaces + admin tools
 2. Use `create_workspace(name="myproject")` → returns `api_key`
-3. Share `api_key` with collaborators → they see only that workspace
+3. Share `api_key` with collaborators → they connect to their own workspace (see [Access model](#access-model-v1) below for how)
 4. Use `issue_key`/`revoke_key`/`rotate_key` to manage keys
+
+### Access model (v1)
+
+There are two distinct layers of access: **who can connect** (front door) and **which workspace a call touches** (routing). v1 supports these consumer types:
+
+| Consumer | How they connect | Workspace routing |
+|----------|------------------|-------------------|
+| **Operator (admin)** | Hosted MCP behind OAuth (e.g. `mcp-auth-proxy` → `/mcp`) | Sees **all** workspaces + admin tools (env `LIGHTRAG_API_KEY` = superadmin) |
+| **Workspace consumer** | Runs `lightrag-mcp-connect` **locally** (`uvx`) pointed at your gateway | Sees **only** their workspace (their key via `LIGHTRAG_API_KEY` or per-call `api_key`) |
+
+A workspace consumer runs their own MCP instance with their workspace key:
+
+```bash
+uvx --from git+https://github.com/alexbic/lightrag-mcp-connect.git@v1.3.0 lightrag-mcp-connect
+# env: LIGHTRAG_GATEWAY_URL=https://your-gateway.example  LIGHTRAG_API_KEY=lr_myproject_...
+```
+
+**Important:** The hosted OAuth path is a **single shared identity** (the operator). Do **not** share the hosted MCP password with collaborators — anyone holding it connects as the admin and sees every workspace. In v1, collaborators get isolation by running the MCP locally with their own key, not by logging into the hosted path.
 
 **Per-call workspace targeting:** In gateway mode, agents can pass an `api_key` argument in tool calls to route to a specific workspace (instead of using the env key's default workspace):
 
@@ -203,6 +221,10 @@ Mode is determined by environment variables:
 The MCP server can inject instructions into agents' system prompts at handshake (via the `instructions` field in `InitializeResult`). Use this to teach agents workspace-aware conventions without editing config files on every machine.
 
 **Enable:** Set `LIGHTRAG_MCP_INSTRUCTIONS_FILE=/path/to/instructions.md` and restart the MCP server. See `src/lightrag_mcp_connect/instructions.example.md` for format.
+
+### Roadmap: multi-user hosted access (v2)
+
+v1 isolates collaborators by having them run the MCP locally with their own key. **v2** will let collaborators connect through the **same hosted connector** with per-user identity: the auth proxy maps each OAuth user to a workspace key and injects it per request, so any MCP-capable client (claude.ai mobile, Cursor, ChatGPT, …) reaches its own workspace without a local install. This requires per-user auth at the proxy and a path for the injected key to cross the stdio boundary of the MCP server's process model — both are open work, tracked separately from v1.
 
 ## Architecture
 
