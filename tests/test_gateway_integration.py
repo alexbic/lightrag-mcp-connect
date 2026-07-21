@@ -58,7 +58,7 @@ def reset_env():
         "LIGHTRAG_GATEWAY_URL",
         "LIGHTRAG_API_KEY",
         "LIGHTRAG_BASE_URL",
-        "WORKSPACE_ADMIN_KEY",
+        "LIGHTRAG_ADMIN_KEY",
     ]:
         original_env[key] = os.environ.get(key)
         if key in os.environ:
@@ -72,7 +72,8 @@ def reset_env():
 
     # Reset globals in server.py module (singleton client + admin cache)
     import sys
-    server_module = sys.modules['lightrag_mcp_connect.server']
+
+    server_module = sys.modules["lightrag_mcp_connect.server"]
     server_module.lightrag_client = None
     server_module._is_admin_cache = None
 

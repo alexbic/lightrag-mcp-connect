@@ -113,7 +113,8 @@ class WorkspaceRegistry:
             """INSERT INTO lightrag_workspace_keys
                (workspace_slug, key_hash, key_prefix, is_admin)
                VALUES (NULL, $1, $2, true)
-               ON CONFLICT (key_hash) DO NOTHING""",
+               ON CONFLICT (key_hash) DO UPDATE
+               SET is_admin = true, workspace_slug = NULL""",
             self.hash_key(token),
             token[:18],
         )

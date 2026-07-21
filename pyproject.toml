@@ -41,11 +41,11 @@ dev = [
 [project.scripts]
 lightrag-mcp-connect = "lightrag_mcp_connect.cli:cli"
 
-[tool.setuptools.packages.find]
-where = ["src"]
+[tool.setuptools]
+packages = ["lightrag_mcp_connect"]
 
 [tool.setuptools.package-dir]
-"" = "src"
+"lightrag_mcp_connect" = "mcp/app"
 
 [tool.black]
 line-length = 88
@@ -54,6 +54,9 @@ target-version = ['py310']
 [tool.isort]
 profile = "black"
 line_length = 88
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
 
 [tool.mypy]
 python_version = "3.10"

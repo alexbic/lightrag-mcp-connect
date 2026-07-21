@@ -23,9 +23,9 @@ def main() -> None:
     revoke.add_argument("prefix")
     sub.add_parser("admin-key-add")
     args = parser.parse_args()
-    admin_key = os.environ.get("WORKSPACE_ADMIN_KEY")
+    admin_key = os.environ.get("LIGHTRAG_ADMIN_KEY")
     if not admin_key:
-        parser.error("WORKSPACE_ADMIN_KEY is required")
+        parser.error("LIGHTRAG_ADMIN_KEY is required")
     headers = {"X-Admin-Key": admin_key}
     with httpx.Client(base_url=args.url, headers=headers, timeout=30) as client:
         if args.command == "create":

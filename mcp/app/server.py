@@ -43,6 +43,7 @@ def load_instructions() -> str:
         logger.warning("Failed to read instructions file: %s", path)
         return ""
 
+
 from .client import (
     LightRAGClient,
     LightRAGError,
@@ -1150,7 +1151,9 @@ def _get_lightrag_client() -> LightRAGClient:
     global lightrag_client
     if lightrag_client is None:
         gateway_url = os.getenv("LIGHTRAG_GATEWAY_URL")
-        base_url = gateway_url or os.getenv("LIGHTRAG_BASE_URL", "http://localhost:9621")
+        base_url: str = (
+            gateway_url or os.getenv("LIGHTRAG_BASE_URL") or "http://localhost:9621"
+        )
         lightrag_client = LightRAGClient(
             base_url=base_url,
             api_key=os.getenv("LIGHTRAG_API_KEY"),
@@ -1248,8 +1251,12 @@ async def main() -> None:
                 instructions=load_instructions(),
             )
             logger.info(f"INITIALIZATION OPTIONS:")
-            logger.info(f"  - Instructions length: {len(init_options.instructions) if init_options.instructions else 0}")
-            logger.info(f"  - Instructions preview: {init_options.instructions[:200] if init_options.instructions else '(none)'}")
+            logger.info(
+                f"  - Instructions length: {len(init_options.instructions) if init_options.instructions else 0}"
+            )
+            logger.info(
+                f"  - Instructions preview: {init_options.instructions[:200] if init_options.instructions else '(none)'}"
+            )
             logger.info(f"  - Init options: {init_options}")
             logger.info(f"  - Init options type: {type(init_options)}")
 

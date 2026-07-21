@@ -20,7 +20,7 @@ NetworkX data remain visible after migration.
 Required secrets:
 
 - `LIGHTRAG_SERVER_KEY`: internal key used only between the gateway and child servers.
-- `WORKSPACE_BOOTSTRAP_ADMIN_KEY`: the operator's key, imported into the registry with `is_admin=true` at startup. That one key then authorizes every create/list/rotate/revoke operation (via `X-Admin-Key`) and unlocks the admin MCP tools. There is no separate static admin secret — the registry's `is_admin` flag is the single source of truth.
+- `LIGHTRAG_ADMIN_KEY`: the operator's key, imported into the registry with `is_admin=true` at startup. That one key then authorizes every create/list/rotate/revoke operation (via `X-Admin-Key`) and unlocks the admin MCP tools. There is no separate static admin secret — the registry's `is_admin` flag is the single source of truth.
 - `WORKSPACE_KEY_PEPPER`: random value of at least 32 characters used to hash client keys.
 
 PostgreSQL connection uses the existing `POSTGRES_*` variables. The registry

@@ -40,6 +40,8 @@ def _per_request_headers() -> Optional[Dict[str, str]]:
     """Headers to merge onto the client's defaults for this request, if any."""
     key = _REQUEST_API_KEY.get()
     return {"X-API-Key": key} if key else None
+
+
 from .models import (
     # Request models
     InsertTextRequest,

@@ -26,11 +26,11 @@ dev = [
 lightrag-workspace-gateway = "lightrag_workspace_gateway.app:main"
 lightrag-workspace = "lightrag_workspace_gateway.cli:main"
 
-[tool.setuptools.packages.find]
-where = ["src"]
+[tool.setuptools]
+packages = ["lightrag_workspace_gateway"]
 
 [tool.setuptools.package-dir]
-"" = "src"
+"lightrag_workspace_gateway" = "app"
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

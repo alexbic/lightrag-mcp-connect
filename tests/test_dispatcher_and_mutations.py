@@ -43,7 +43,9 @@ async def test_advertised_tools_have_registered_handlers() -> None:
     if unadvertised:
         # If anything is missing from the advertised list, it must be admin tools
         # (and we're likely running in simple mode without LIGHTRAG_GATEWAY_URL).
-        assert unadvertised.issubset(admin_tools), f"Unadvertised non-admin tools: {unadvertised}"
+        assert unadvertised.issubset(
+            admin_tools
+        ), f"Unadvertised non-admin tools: {unadvertised}"
 
 
 @pytest.mark.asyncio

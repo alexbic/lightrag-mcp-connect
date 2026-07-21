@@ -8,7 +8,7 @@ from urllib.parse import unquote, urlparse
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from .client import LightRAGClient, LightRAGValidationError
+from .client import LightRAGClient, LightRAGAuthError, LightRAGValidationError
 from .content_store import DocumentContentStore
 from .models import AppendTextResponse, UpdateDocumentResponse
 
@@ -446,9 +446,7 @@ async def create_workspace(
 
 
 @tool_handler("issue_key")
-async def issue_key(
-    arguments: Dict[str, Any], client: LightRAGClient
-) -> ToolResult:
+async def issue_key(arguments: Dict[str, Any], client: LightRAGClient) -> ToolResult:
     """Issue a new workspace API key.
 
     The workspace must already exist. The gateway returns the new key with
@@ -460,9 +458,7 @@ async def issue_key(
 
 
 @tool_handler("revoke_key")
-async def revoke_key(
-    arguments: Dict[str, Any], client: LightRAGClient
-) -> ToolResult:
+async def revoke_key(arguments: Dict[str, Any], client: LightRAGClient) -> ToolResult:
     """Revoke a workspace API key by its prefix.
 
     The prefix is the first 18 characters of the key (e.g., 'lr_main_ABC123').
@@ -474,9 +470,7 @@ async def revoke_key(
 
 
 @tool_handler("rotate_key")
-async def rotate_key(
-    arguments: Dict[str, Any], client: LightRAGClient
-) -> ToolResult:
+async def rotate_key(arguments: Dict[str, Any], client: LightRAGClient) -> ToolResult:
     """Rotate a workspace key: revoke the current key and issue a new one.
 
     This is a convenience that combines revoke_key + issue_key for a full

@@ -1,5 +1,8 @@
 # lightrag-mcp-connect
 
+Project orientation files: `PROJECT.md`, `STATUS.md`, `SPEC.md`, `PLAN.md`, `ROADMAP.md`, `BACKLOG.md`, `TECH_STACK.md`, and `AGENTS.md`. Agents must read them before making non-trivial changes.
+
+
 **English** | [Русский](README.ru.md) | [Español](README.es.md)
 
 MCP access to a [LightRAG](https://github.com/HKUDS/LightRAG) knowledge
@@ -220,7 +223,7 @@ Mode is determined by environment variables:
 
 The MCP server can inject instructions into agents' system prompts at handshake (via the `instructions` field in `InitializeResult`). Use this to teach agents workspace-aware conventions without editing config files on every machine.
 
-**Enable:** Set `LIGHTRAG_MCP_INSTRUCTIONS_FILE=/path/to/instructions.md` and restart the MCP server. See `src/lightrag_mcp_connect/instructions.example.md` for format.
+**Enable:** Set `LIGHTRAG_MCP_INSTRUCTIONS_FILE=/path/to/instructions.md` and restart the MCP server. See `mcp/app/instructions.example.md` for format.
 
 ### Roadmap: multi-user hosted access (v2)
 

@@ -45,7 +45,7 @@ def create_app() -> FastAPI:
             postgres_dsn(), os.environ["WORKSPACE_KEY_PEPPER"]
         )
         await app.state.registry.bootstrap_admin_key(
-            os.getenv("WORKSPACE_BOOTSTRAP_ADMIN_KEY", "")
+            os.getenv("LIGHTRAG_ADMIN_KEY", "")
         )
         app.state.manager = WorkspaceProcessManager(
             first_port=int(os.getenv("WORKSPACE_FIRST_PORT", "9700")),
