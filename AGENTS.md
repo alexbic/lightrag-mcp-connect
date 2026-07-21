@@ -62,6 +62,15 @@ Before implementation, assess task size and decompose when needed:
 - Keep the parent goal visible in `PLAN.md` or `STATUS.md` so the pieces still assemble into the intended outcome.
 - Do not start broad implementation until the decomposition is written down.
 
+## Skills and Tools Check
+Before doing specialized work, check whether an applicable skill, tool, or repository script already exists.
+
+- Use available skills/tools for tasks such as project review, GitHub work, deployment operations, data analysis, document generation, browser/UI checks, or release workflows when they fit the task.
+- Prefer repository scripts and documented commands over ad-hoc one-off commands.
+- If no suitable skill/tool exists, follow these project instructions and document the manual workflow in `STATUS.md` or `PLAN.md` when it matters.
+- If the same manual workflow is likely to repeat across repositories, propose creating a reusable skill. Create or update such a skill only when the user explicitly asks for it.
+- Do not use a skill/tool as a shortcut around privacy, secret-handling, or task-state rules in this file.
+
 During work, keep the project files current whenever there is a meaningful intermediate result:
 
 - tests/checks run or intentionally skipped;
