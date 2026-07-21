@@ -21,7 +21,8 @@
 - [x] Update example Compose from `v1.1.0` to that release.
 - [x] Merge `feature/workspace-gateway` into `main`.
 - [x] Use `LIGHTRAG_GATEWAY_URL` for MCP instead of `LIGHTRAG_BASE_URL`.
-- [ ] Verify admin tools and normal workspace isolation through MCP.
+- [x] Verify admin tools and normal workspace isolation through MCP.
+- [x] Prepare managed workspace/gateway `v2.0.0` release cut with aligned package versions, docs, Compose pins, and verification records.
 
 ### Next Safe Merge Step
 **Goal:** Land the verified `feature/workspace-gateway` branch into `main` without losing release/history context.
@@ -31,6 +32,23 @@
 - The reverted stable line remains available to legacy users by pinning `v1.1.1`.
 - `feature/workspace-gateway` merged cleanly into `main`.
 - Relevant verification passed on merged `main`.
+
+### Release Prep: v2.0.0
+**Goal:** Publish the managed workspace/gateway line as the next stable public release while keeping `v1.1.1` as the explicit legacy rollback line.
+
+**DoD:**
+- [x] MCP package version, advertised server version, and gateway package version all report `2.0.0`.
+- [x] Managed deployment docs and Compose defaults pin `v2.0.0`.
+- [x] README wording no longer treats managed gateway mode as a `v1.x` feature or reserves `v2` for future hosted identity work.
+- [x] Full verification loop from `TECH_STACK.md` is run again and recorded.
+- [x] Release/tag plan is written down with legacy rollback guidance.
+
+**Release/tag plan:**
+1. Confirm the worktree contains only the reviewed `v2.0.0` prep changes and exclude any accidental local lockfiles or unrelated edits.
+2. Commit the release-prep changes on `main` with a release-oriented message.
+3. Create the managed release tag as annotated `v2.0.0` on that commit.
+4. Publish release notes that call out managed workspace/gateway mode as the stable line and keep `v1.1.1` documented as the legacy simple-mode rollback pin.
+5. After the tag exists remotely, keep the Compose examples and local `uvx` snippets pinned to `v2.0.0` as already prepared here.
 
 **Pre-checks:**
 - Confirm current branch is `feature/workspace-gateway`.

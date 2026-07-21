@@ -135,7 +135,7 @@ unless `LIGHTRAG_FILE_PATH_ROOT` names an allowed directory. Resolved paths
 
 ## Workspace-aware mode
 
-As of v1.3.0, this MCP server supports **workspace routing** through an integrated gateway component, enabling multi-tenant knowledge bases with isolated workspaces and admin-managed access controls. Two runtime modes:
+As of v2.0.0, this MCP server supports **workspace routing** through an integrated gateway component, enabling multi-tenant knowledge bases with isolated workspaces and admin-managed access controls. Two runtime modes:
 
 ### Simple mode (default)
 
@@ -180,12 +180,12 @@ docker compose -f deploy/docker-compose.gateway.yml up -d
 **Admin workflow:**
 1. Connect with `LIGHTRAG_API_KEY` (superadmin) → sees all workspaces + admin tools
 2. Use `create_workspace(name="myproject")` → returns `api_key`
-3. Share `api_key` with collaborators → they connect to their own workspace (see [Access model](#access-model-v1) below for how)
+3. Share `api_key` with collaborators → they connect to their own workspace (see [Current access model](#current-access-model) below for how)
 4. Use `issue_key`/`revoke_key`/`rotate_key` to manage keys
 
-### Access model (v1)
+### Current access model
 
-There are two distinct layers of access: **who can connect** (front door) and **which workspace a call touches** (routing). v1 supports these consumer types:
+There are two distinct layers of access: **who can connect** (front door) and **which workspace a call touches** (routing). The `v2.0.0` managed release supports these consumer types:
 
 | Consumer | How they connect | Workspace routing |
 |----------|------------------|-------------------|
@@ -195,11 +195,11 @@ There are two distinct layers of access: **who can connect** (front door) and **
 A workspace consumer runs their own MCP instance with their workspace key:
 
 ```bash
-uvx --from git+https://github.com/alexbic/lightrag-mcp-connect.git@v1.3.0 lightrag-mcp-connect
+uvx --from git+https://github.com/alexbic/lightrag-mcp-connect.git@v2.0.0 lightrag-mcp-connect
 # env: LIGHTRAG_GATEWAY_URL=https://your-gateway.example  LIGHTRAG_API_KEY=lr_myproject_...
 ```
 
-**Important:** The hosted OAuth path is a **single shared identity** (the operator). Do **not** share the hosted MCP password with collaborators — anyone holding it connects as the admin and sees every workspace. In v1, collaborators get isolation by running the MCP locally with their own key, not by logging into the hosted path.
+**Important:** The hosted OAuth path is a **single shared identity** (the operator). Do **not** share the hosted MCP password with collaborators — anyone holding it connects as the admin and sees every workspace. In the current managed release, collaborators get isolation by running the MCP locally with their own key, not by logging into the hosted path.
 
 **Per-call workspace targeting:** In gateway mode, agents can pass an `api_key` argument in tool calls to route to a specific workspace (instead of using the env key's default workspace):
 
@@ -225,9 +225,9 @@ The MCP server can inject instructions into agents' system prompts at handshake 
 
 **Enable:** Set `LIGHTRAG_MCP_INSTRUCTIONS_FILE=/path/to/instructions.md` and restart the MCP server. See `mcp/app/instructions.example.md` for format.
 
-### Roadmap: multi-user hosted access (v2)
+### Future: multi-user hosted access
 
-v1 isolates collaborators by having them run the MCP locally with their own key. **v2** will let collaborators connect through the **same hosted connector** with per-user identity: the auth proxy maps each OAuth user to a workspace key and injects it per request, so any MCP-capable client (claude.ai mobile, Cursor, ChatGPT, …) reaches its own workspace without a local install. This requires per-user auth at the proxy and a path for the injected key to cross the stdio boundary of the MCP server's process model — both are open work, tracked separately from v1.
+The current managed release isolates collaborators by having them run the MCP locally with their own key. A future hosted-access phase will let collaborators connect through the **same hosted connector** with per-user identity: the auth proxy maps each OAuth user to a workspace key and injects it per request, so any MCP-capable client (claude.ai mobile, Cursor, ChatGPT, …) reaches its own workspace without a local install. This requires per-user auth at the proxy and a path for the injected key to cross the stdio boundary of the MCP server's process model — both are open work, tracked separately from the `v2.0.0` release.
 
 ## Architecture
 
@@ -266,7 +266,7 @@ at this package via [`uv`](https://docs.astral.sh/uv/)'s `uvx`:
       "command": "uvx",
       "args": [
         "--from",
-        "git+https://github.com/alexbic/lightrag-mcp-connect.git@v1.3.0",
+        "git+https://github.com/alexbic/lightrag-mcp-connect.git@v2.0.0",
         "lightrag-mcp-connect"
       ],
       "env": {
@@ -285,9 +285,9 @@ first run — no manual clone or `pip install` step, ever. Running this
 way can also use `file_path`: set `LIGHTRAG_FILE_PATH_ROOT` to the narrowest
 directory the MCP server should be allowed to read.
 
-The URL above pins the latest stable release (`@v1.3.0` — see
+The URL above pins the latest stable release (`@v2.0.0` — see
 [Releases](https://github.com/alexbic/lightrag-mcp-connect/releases)
-for what's available). Drop the `@v1.3.0` entirely to always track
+for what's available). Drop the `@v2.0.0` entirely to always track
 `main` instead, or replace it with a commit SHA if you need to pin
 something more specific.
 
@@ -358,7 +358,7 @@ different server names, in the same MCP client:
       "command": "uvx",
       "args": [
         "--from",
-        "git+https://github.com/alexbic/lightrag-mcp-connect.git@v1.3.0",
+        "git+https://github.com/alexbic/lightrag-mcp-connect.git@v2.0.0",
         "lightrag-mcp-connect"
       ],
       "env": {

@@ -1,7 +1,6 @@
 # Backlog
 
 ## To Do
-- [ ] @qa: Verify admin tools through MCP — DoD: admin sees tools; normal workspace key does not.
 - [ ] @docs: Document first-time setup flow for managed backend mode — DoD: README has copy/paste path.
 
 ## In Progress
@@ -11,6 +10,9 @@
 - [ ] @qa: Review `LIGHTRAG_ADMIN_KEY` naming and docs for first-time user clarity.
 
 ## Done
+- [x] @docs: Document local `uv` lockfile policy for agent workflows — DoD met on 2026-07-21: `AGENTS.md` and `TECH_STACK.md` now say that `uv.lock` files created by local verification/dev runs are not committed in this repository and should be ignored/cleaned up.
+- [x] @release: Prepare managed workspace/gateway release `v2.0.0` — DoD met on 2026-07-21: package/runtime versions, README, and managed Compose pins now point to `v2.0.0`; legacy `v1.1.1` guidance remains explicit; full verify loop passed; release/tag plan recorded.
+- [x] @qa: Verify admin tools through MCP — DoD: admin sees tools; normal workspace key does not. Verified on 2026-07-21 with MCP integration tests plus gateway admin-auth/registry coverage.
 - [x] @devops: Prepare deployment example switch to gateway-mode — DoD: remote and full-example Compose stacks run MCP through `LIGHTRAG_GATEWAY_URL`, not direct `LIGHTRAG_BASE_URL`, docs/examples match, and Compose config plus MCP image build were re-verified.
 - [x] @backend: Merge `feature/workspace-gateway` into `main` — DoD: clean merge completed on `main`, relevant checks passed, and project state files updated.
 - [x] @backend: Reconcile `main` release direction before merging `feature/workspace-gateway` — DoD: decision recorded that `main` resumes the managed gateway track while legacy users pin `v1.1.1`, then rerun safe merge pre-checks.

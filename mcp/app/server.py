@@ -1246,7 +1246,7 @@ async def main() -> None:
             # Create initialization options
             init_options = InitializationOptions(
                 server_name="lightrag-mcp-connect",
-                server_version="1.1.0",
+                server_version="2.0.0",
                 capabilities=capabilities,
                 instructions=load_instructions(),
             )

@@ -1,14 +1,14 @@
 # Status: LightRAG MCP Gateway
 
-**Updated:** 2026-07-21T22:25:00Z
+**Updated:** 2026-07-21T23:20:00Z
 
 ## Summary
 Managed backend mode is the current release track. The public connector repository owns both `mcp/app` and `gateway/app`; deployments should consume released versions from this repository instead of copying connector source into separate deployment repositories.
 
 ## Progress
 - M1 Managed Backend Baseline: █████████░ 90%
-- M2 Managed MCP Release: ████████░░ 80%
-- M3 Public Repository Polish: █████░░░░░ 50%
+- M2 Managed MCP Release: ██████████ 100%
+- M3 Public Repository Polish: ██████░░░░ 60%
 - M4 External LightRAG Proxy Mode: ░░░░░░░░░░ 0%
 
 ## Done
@@ -40,16 +40,45 @@ Managed backend mode is the current release track. The public connector reposito
 - Corrected stale legacy guidance in `SPEC.md` from `v1.1.0` to `v1.1.1`.
 - Replaced the old project-specific `ossi` examples in public docs/tests with neutral `example` workspace naming.
 - Re-ran verification after the follow-up fixes: MCP checks passed, gateway checks passed, all Compose examples validated, and both `mcp/Dockerfile` and `gateway/Dockerfile` built successfully.
+- Verified Phase 2 MCP admin visibility and workspace isolation coverage on the managed track:
+  - `UV_CACHE_DIR=/tmp/lightrag-mcp-cache uv run --extra dev pytest -q tests/test_gateway_integration.py tests/test_dispatcher_and_mutations.py tests/test_security_and_contracts.py` → 29 passed.
+  - `UV_CACHE_DIR=/tmp/lightrag-mcp-cache uv run --directory gateway --extra dev pytest -q tests/test_admin_auth.py tests/test_registry.py tests/test_registry_postgres.py` → 8 passed, 1 skipped.
+- Prepared the managed workspace/gateway `v2.0.0` release line:
+  - Updated MCP package version, advertised server version, and gateway package version to `2.0.0`.
+  - Updated managed README and Compose release pins from `v1.3.0` to `v2.0.0`.
+  - Reworded README release narrative so the current managed line is `v2.0.0`, while future per-user hosted identity work stays explicitly future.
+- Re-ran the full verification loop for `v2.0.0` prep:
+  - `UV_CACHE_DIR=/tmp/lightrag-mcp-cache uv run --extra dev pytest -q` → 29 passed.
+  - `UV_CACHE_DIR=/tmp/lightrag-mcp-cache uv run --extra dev mypy mcp/app` → clean.
+  - `UV_CACHE_DIR=/tmp/lightrag-mcp-cache uv run --extra dev black --check mcp/app tests` → clean.
+  - `UV_CACHE_DIR=/tmp/lightrag-mcp-cache uv run --directory gateway --extra dev pytest -q` → 8 passed, 1 skipped.
+  - `UV_CACHE_DIR=/tmp/lightrag-mcp-cache uv run --directory gateway --extra dev mypy app` → clean.
+  - `UV_CACHE_DIR=/tmp/lightrag-mcp-cache uv run --directory gateway --extra dev black --check app tests` → clean.
+  - `docker compose -f deploy/docker-compose.gateway.yml config --quiet` → passed.
+  - `docker compose -f deploy/docker-compose.yml config --quiet` → passed.
+  - `docker compose -f deploy/docker-compose.traefik.yml config --quiet` → passed.
+  - `docker compose -f deploy/docker-compose.full-example.yml config --quiet` → passed.
+  - `docker compose -f deploy/docker-compose.simple.yml config --quiet` → passed.
+  - `docker build -f gateway/Dockerfile -t lightrag-mcp-gateway-layout-smoke .` → passed.
+  - `docker build -f mcp/Dockerfile -t lightrag-mcp-smoke .` → passed.
+- Verification environment notes:
+  - Initial `uv run` attempts failed under sandbox due blocked DNS/PyPI access; reran with temporary elevated network access and all Python checks passed.
+  - Initial Docker builds failed under sandbox due denied Docker socket access; reran with temporary elevated Docker daemon access and both smoke builds passed.
+- Documented repository policy for local `uv` lockfiles:
+  - `uv.lock` and nested files such as `gateway/uv.lock` are treated as local development artifacts for this repository.
+  - They stay ignored and must not be committed unless maintainers explicitly change policy later.
+  - `.gitignore`, `AGENTS.md`, and `TECH_STACK.md` now record this expectation.
 
 ## In Work
-- Phase 2 follow-up after the safe merge: verify admin tools and normal workspace isolation through MCP on the managed track.
+- Managed backend hardening/readability cleanup remains open; the Phase 2 MCP admin-visibility follow-up is now verified.
 
 ## Blockers
 - None known.
 
 ## Next
-- Verify admin tools and normal workspace isolation through MCP on the merged track.
-- Commit the reviewed deployment/doc/test changes when ready.
+- Publish the verified annotated tag `v2.0.0` from this release commit so downstream projects can pin it for validation.
+- Test the published `v2.0.0` tag from another LightRAG project before drafting GitHub release notes.
+- Publish release notes that call out managed workspace/gateway mode as the stable line and preserve `v1.1.1` as the legacy rollback pin after downstream validation succeeds.
 - Preserve legacy stability guidance by keeping `v1.1.1` as the documented pin for users who need the old simple-mode line.
 - Keep `BACKLOG.md` and `STATUS.md` updated before and during future repository work so interrupted sessions can be resumed safely.
 - Decompose future large tasks into independently testable backlog items before implementation.

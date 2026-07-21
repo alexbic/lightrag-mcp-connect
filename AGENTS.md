@@ -19,6 +19,7 @@ Read only what you need from long implementation files after this orientation.
 - Keep public-facing names clear for first-time self-hosters.
 - Use `LIGHTRAG_ADMIN_KEY` for the owner/admin key name.
 - Keep `LIGHTRAG_SERVER_KEY` internal only.
+- For this repository, do not commit `uv.lock` files created by local `uv` development or verification runs. Treat them as local tooling artifacts unless maintainers explicitly decide to version them later.
 - Never print secrets, raw deployment env, API keys, passwords, tokens, or signed URLs.
 - Because this is a public repository, do not write personal, customer-specific, internal-server, private-domain, private-IP, organization, or family/project-specific details into committed instruction files. Use generic examples such as `example workspace`, `hosted deployment`, and `self-hoster`.
 - For hosted deployment work, inspect the current configuration read-only first and avoid exposing environment values.
@@ -141,3 +142,5 @@ Do not leave these files stale after implementing code, deployment changes, migr
 Before claiming a code change is done, run the relevant checks from `TECH_STACK.md`.
 
 If Docker is unavailable, say so explicitly and leave Docker build verification as pending.
+
+After `uv`-based local verification or debugging, check for newly created `uv.lock` files in the repository root or nested Python project folders. In this repository they should stay ignored and out of Git unless the maintainers explicitly change that policy.

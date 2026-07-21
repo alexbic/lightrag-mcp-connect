@@ -109,6 +109,10 @@ ipython_config.py
 #   https://pdm.fming.dev/#use-with-ide
 .pdm.toml
 
+# uv
+uv.lock
+*/uv.lock
+
 # PEP 582; used by e.g. github.com/David-OConnor/pyflow and github.com/pdm-project/pdm
 __pypackages__/
 
@@ -183,6 +187,5 @@ archive/
 # Temporary test files (but not archived ones)
 temp_test_*.py
 debug_temp_*.py
-
 
 

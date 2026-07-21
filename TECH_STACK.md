@@ -56,6 +56,12 @@ docker build -f gateway/Dockerfile -t lightrag-mcp-gateway-layout-smoke .
 docker build -f mcp/Dockerfile -t lightrag-mcp-smoke .
 ```
 
+## Local `uv` Artifact Policy
+- In this repository, `uv.lock` is treated as a local development artifact when created by `uv run` during verification, debugging, or ad-hoc local work.
+- Do not commit repository-root `uv.lock` or nested project lockfiles such as `gateway/uv.lock` unless maintainers explicitly decide to start versioning them.
+- Keep these files ignored in Git and clean them up after local `uv` workflows if they appear.
+- This policy is specific to this repository style: a public connector/library workflow where production builds currently use `pip install .` and runtime/deploy paths do not require checked-in `uv.lock` files.
+
 ## Deployment Notes
 - Use released tags for production deployments.
 - Remote managed deployments now route MCP through `LIGHTRAG_GATEWAY_URL` to the bundled `lightrag-gateway`; direct `LIGHTRAG_BASE_URL` wiring is kept for simple mode only.
