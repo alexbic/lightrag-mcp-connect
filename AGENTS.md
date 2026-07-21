@@ -52,6 +52,16 @@ Before starting any non-trivial repository work, make the task recoverable:
    - known blockers or risks;
    - next action if the session stops.
 
+## Task Sizing and Decomposition
+Before implementation, assess task size and decompose when needed:
+
+- If the task can be completed and verified in one focused pass, keep it as one `BACKLOG.md` item.
+- If the task has multiple components, uncertain dependencies, deployment risk, or could overflow the context window, split it into smaller independently testable items.
+- Each decomposed item must have its own Definition of Done and verification path.
+- Prefer a sequence where each completed item leaves the repository in a working, reviewable state.
+- Keep the parent goal visible in `PLAN.md` or `STATUS.md` so the pieces still assemble into the intended outcome.
+- Do not start broad implementation until the decomposition is written down.
+
 During work, keep the project files current whenever there is a meaningful intermediate result:
 
 - tests/checks run or intentionally skipped;
