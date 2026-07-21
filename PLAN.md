@@ -28,7 +28,7 @@
 
 **Completed on 2026-07-21:**
 - `main` resumes the managed gateway track.
-- The reverted stable line remains available to legacy users by pinning `v1.1.0`.
+- The reverted stable line remains available to legacy users by pinning `v1.1.1`.
 - `feature/workspace-gateway` merged cleanly into `main`.
 - Relevant verification passed on merged `main`.
 

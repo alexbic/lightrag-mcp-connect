@@ -13,7 +13,7 @@
 
 ## Done
 - [x] @backend: Merge `feature/workspace-gateway` into `main` — DoD: clean merge completed on `main`, relevant checks passed, and project state files updated.
-- [x] @backend: Reconcile `main` release direction before merging `feature/workspace-gateway` — DoD: decision recorded that `main` resumes the managed gateway track while legacy users pin `v1.1.0`, then rerun safe merge pre-checks.
+- [x] @backend: Reconcile `main` release direction before merging `feature/workspace-gateway` — DoD: decision recorded that `main` resumes the managed gateway track while legacy users pin `v1.1.1`, then rerun safe merge pre-checks.
 - [x] @backend: Resolve pending public `lightrag-mcp-connect` `feature/workspace-gateway` changes — DoD: no dirty worktree, tests pass.
 - [x] @backend: Decide release tag for managed gateway-aware MCP — DoD: tag exists and deployment examples can pin it.
 - [x] @docs: Add recoverable task-state protocol for agents — DoD: `AGENTS.md` explains how to record start, progress, blockers, checks, and handoff.
