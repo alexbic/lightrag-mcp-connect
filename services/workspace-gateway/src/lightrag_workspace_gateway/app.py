@@ -59,21 +59,32 @@ def create_app() -> FastAPI:
 
     app = FastAPI(title="LightRAG Workspace Gateway", lifespan=lifespan)
 
-    def require_admin(value: str | None) -> None:
-        expected = os.environ["WORKSPACE_ADMIN_KEY"]
-        if value is None or not __import__("hmac").compare_digest(value, expected):
+    async def require_admin(value: str | None) -> None:
+        """Authorize an admin API call by resolving the key in the registry.
+
+        The registry is the single source of truth for admin status: a key is
+        an admin key iff it resolves to a principal with ``is_admin=true``.
+        There is no separate static admin secret — the operator's env key is
+        bootstrapped into the registry as ``is_admin=true`` at startup (see
+        ``bootstrap_admin_key``), and that one key authorizes every admin
+        operation and also unlocks the admin MCP tools. One key per identity.
+        """
+        if value is None:
+            raise HTTPException(401, "missing admin key")
+        principal = await app.state.registry.resolve(value)
+        if principal is None or not principal.is_admin:
             raise HTTPException(401, "invalid workspace admin key")
 
     @app.get("/_workspaces")
     async def list_workspaces(x_admin_key: str | None = Header(None)):
-        require_admin(x_admin_key)
+        await require_admin(x_admin_key)
         return {"workspaces": await app.state.registry.list_workspaces()}
 
     @app.post("/_workspaces/{slug}", status_code=201)
     async def create_workspace(
         slug: str, request: Request, x_admin_key: str | None = Header(None)
     ):
-        require_admin(x_admin_key)
+        await require_admin(x_admin_key)
         body = await request.json() if request.headers.get("content-length") else {}
         try:
             workspace = await app.state.registry.create_workspace(
@@ -86,7 +97,7 @@ def create_app() -> FastAPI:
 
     @app.post("/_workspaces/{slug}/keys", status_code=201)
     async def issue_key(slug: str, x_admin_key: str | None = Header(None)):
-        require_admin(x_admin_key)
+        await require_admin(x_admin_key)
         try:
             token = await app.state.registry.issue_key(slug)
         except ValueError as exc:
@@ -95,12 +106,12 @@ def create_app() -> FastAPI:
 
     @app.delete("/_keys/{prefix}")
     async def revoke_key(prefix: str, x_admin_key: str | None = Header(None)):
-        require_admin(x_admin_key)
+        await require_admin(x_admin_key)
         return {"revoked": await app.state.registry.revoke_key(prefix)}
 
     @app.post("/_keys/admin", status_code=201)
     async def issue_admin_key(x_admin_key: str | None = Header(None)):
-        require_admin(x_admin_key)
+        await require_admin(x_admin_key)
         token = await app.state.registry.issue_key(None, admin=True)
         return {"workspace": "*", "api_key": token, "shown_once": True}
 

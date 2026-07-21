@@ -170,7 +170,7 @@ MCP client → lightrag-mcp-connect → workspace gateway → LightRAG(ws)
 **Quick start:**
 ```bash
 cp deploy/.env.example .env
-# Edit .env: set LIGHTRAG_API_KEY, WORKSPACE_ADMIN_KEY, WORKSPACE_KEY_PEPPER, POSTGRES_*
+# Edit .env: set LIGHTRAG_API_KEY, WORKSPACE_KEY_PEPPER, POSTGRES_*
 docker compose -f deploy/docker-compose.gateway.yml up -d
 ```
 
