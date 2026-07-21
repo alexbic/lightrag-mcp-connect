@@ -1,6 +1,6 @@
 # Status: LightRAG MCP Gateway
 
-**Updated:** 2026-07-21T18:55:00Z
+**Updated:** 2026-07-21T19:50:00Z
 
 ## Summary
 Managed backend mode is the current release track. The public connector repository owns both `mcp/app` and `gateway/app`; deployments should consume released versions from this repository instead of copying connector source into separate deployment repositories.
@@ -21,12 +21,15 @@ Managed backend mode is the current release track. The public connector reposito
 - Added recoverable task-state protocol for agents.
 - Added task decomposition rule for large or risky work.
 - Added skills/tools check rule before specialized work.
+- Added fix-and-verification loop rule for agents.
 - Verified MCP checks: 29 passed, mypy clean, black clean.
 - Verified gateway checks: 8 passed, 1 skipped, mypy clean, black clean.
-- Verified `deploy/docker-compose.gateway.yml` config and `gateway/Dockerfile` build.
+- Verified `deploy/docker-compose.gateway.yml`, `deploy/docker-compose.yml`, `deploy/docker-compose.full-example.yml`, and `deploy/docker-compose.traefik.yml` config.
+- Verified `gateway/Dockerfile` build.
+- Verified remote tag `v1.3.0` exists.
 
 ## In Work
-- Managed backend release hardening.
+- Managed backend release hardening and documentation pin refresh.
 - Public MCP gateway-mode release preparation.
 
 ## Blockers
@@ -34,7 +37,8 @@ Managed backend mode is the current release track. The public connector reposito
 
 ## Next
 - Finish the public managed gateway-aware MCP release.
-- Update docs so first-time self-hosters can choose simple mode or managed gateway mode without reading implementation details.
+- Finish the README and compose pin refresh for managed gateway mode.
 - Keep `BACKLOG.md` and `STATUS.md` updated before and during future repository work so interrupted sessions can be resumed safely.
 - Decompose future large tasks into independently testable backlog items before implementation.
 - Check applicable skills/tools before manual specialized workflows; propose a reusable skill when a workflow repeats.
+- Use the fix-and-verification loop before declaring future verification blockers.

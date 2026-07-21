@@ -17,6 +17,8 @@
 - [x] @docs: Add recoverable task-state protocol for agents — DoD: `AGENTS.md` explains how to record start, progress, blockers, checks, and handoff.
 - [x] @docs: Add task decomposition rule for agents — DoD: `AGENTS.md` requires sizing tasks and splitting large work into independently testable items.
 - [x] @docs: Add skills/tools check rule for agents — DoD: `AGENTS.md` tells agents to use applicable existing skills/tools or propose a reusable skill for repeated workflows.
+- [x] @docs: Add fix-and-verification loop rule for agents — DoD: `AGENTS.md` requires classify/fix/verify/repeat before declaring a blocker.
+- [x] @qa: Re-run merge readiness verification after dependency access was available — DoD: MCP checks, gateway checks, Compose config, and Docker build pass.
 - [x] @docs: Add public privacy/bootstrap rules to agent instructions.
 - [x] @backend: Document secret hygiene for public repo instructions.
 - [x] @backend: Deploy managed workspace gateway.

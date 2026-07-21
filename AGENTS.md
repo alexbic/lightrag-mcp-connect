@@ -71,6 +71,24 @@ Before doing specialized work, check whether an applicable skill, tool, or repos
 - If the same manual workflow is likely to repeat across repositories, propose creating a reusable skill. Create or update such a skill only when the user explicitly asks for it.
 - Do not use a skill/tool as a shortcut around privacy, secret-handling, or task-state rules in this file.
 
+## Fix and Verification Loop
+When implementation or verification fails, do not stop at the first failure unless the next step would require new authority or unsafe action.
+
+1. Classify the failure:
+   - code/config defect;
+   - missing dependency/cache;
+   - network/sandbox/tooling problem;
+   - unclear requirement or external blocker.
+2. If it is a code/config defect, make the smallest focused fix and rerun the relevant check.
+3. If it is an environment/tooling problem, try a safe documented workaround, such as a local cache directory, repository script, or approved tool invocation.
+4. Repeat `fix -> verify -> record result` until:
+   - all relevant checks pass;
+   - the same blocker remains after reasonable attempts;
+   - continuing would require secrets, destructive action, production mutation, or user approval.
+5. Record each meaningful loop result in `STATUS.md` or `BACKLOG.md`, including commands that passed, failed, or were skipped.
+
+Never mark a task complete while required verification is still blocked unless the user explicitly waives that verification.
+
 During work, keep the project files current whenever there is a meaningful intermediate result:
 
 - tests/checks run or intentionally skipped;
