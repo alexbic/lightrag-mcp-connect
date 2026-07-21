@@ -40,7 +40,6 @@ Managed backend mode is the current release track. The public connector reposito
 - None known for the merged managed gateway track.
 
 ## Next
-- Push the merged `main` branch.
 - Continue Phase 2 by switching MCP to `LIGHTRAG_GATEWAY_URL`.
 - Verify admin tools and normal workspace isolation through MCP on the merged track.
 - Preserve legacy stability guidance by keeping `v1.1.1` as the documented pin for users who need the old simple-mode line.
