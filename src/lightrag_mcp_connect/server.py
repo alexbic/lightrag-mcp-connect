@@ -18,6 +18,31 @@ from mcp.types import (
     Tool,
 )
 
+
+def load_instructions() -> str:
+    """Load the server instructions from a file, if configured.
+
+    Reads the file path from LIGHTRAG_MCP_INSTRUCTIONS_FILE and returns
+    its contents as UTF-8 text. If the env var is unset or the file does
+    not exist, returns an empty string (no instructions injected).
+
+    The instructions file is plain markdown; the MCP client injects it into
+    the agent's system prompt once during handshake. Use this to give
+    agents workspace-aware conventions (naming rules, what to save, etc.)
+    without editing Claude Desktop / Claude Code configs on every machine.
+    """
+    path = os.getenv("LIGHTRAG_MCP_INSTRUCTIONS_FILE")
+    if not path:
+        return ""
+    try:
+        return Path(path).read_text(encoding="utf-8")
+    except Exception:
+        # If the file is missing or unreadable, log and return empty rather
+        # than blocking server startup. Instructions are a convenience, not a
+        # requirement.
+        logger.warning("Failed to read instructions file: %s", path)
+        return ""
+
 from .client import (
     LightRAGClient,
     LightRAGError,
@@ -1220,8 +1245,11 @@ async def main() -> None:
                 server_name="lightrag-mcp-connect",
                 server_version="1.1.0",
                 capabilities=capabilities,
+                instructions=load_instructions(),
             )
             logger.info(f"INITIALIZATION OPTIONS:")
+            logger.info(f"  - Instructions length: {len(init_options.instructions) if init_options.instructions else 0}")
+            logger.info(f"  - Instructions preview: {init_options.instructions[:200] if init_options.instructions else '(none)'}")
             logger.info(f"  - Init options: {init_options}")
             logger.info(f"  - Init options type: {type(init_options)}")
 
