@@ -20,7 +20,9 @@
 #                         LIGHTRAG_API_KEY is bootstrapped as the admin key.
 #   POSTGRES_* — PostgreSQL connection (for workspace registry)
 #   LIGHTRAG_FILE_PATH_ROOT — Optional root for file_path uploads
-#   LIGHTRAG_MCP_INSTRUCTIONS_FILE — Optional instructions file path
+#   LIGHTRAG_MCP_CONNECTION_MODE — Optional instruction mode (`remote` recommended here)
+#   LIGHTRAG_MCP_INSTRUCTIONS_DIR — Optional directory with prefixed instruction files
+#   LIGHTRAG_MCP_INSTRUCTIONS_PROFILE — Optional explicit instruction profile override
 #
 # To start: docker compose -f docker-compose.gateway.yml up -d
 #
@@ -89,7 +91,10 @@ services:
       - LIGHTRAG_API_KEY=${LIGHTRAG_API_KEY}
       # Optional: file_path uploads from a trusted local directory
       - LIGHTRAG_FILE_PATH_ROOT=${LIGHTRAG_FILE_PATH_ROOT:-}
-      # Optional: agent instructions injected at handshake
+      # Optional: profile-specific instructions injected at handshake
+      - LIGHTRAG_MCP_CONNECTION_MODE=${LIGHTRAG_MCP_CONNECTION_MODE:-remote}
+      - LIGHTRAG_MCP_INSTRUCTIONS_DIR=${LIGHTRAG_MCP_INSTRUCTIONS_DIR:-}
+      - LIGHTRAG_MCP_INSTRUCTIONS_PROFILE=${LIGHTRAG_MCP_INSTRUCTIONS_PROFILE:-}
       - LIGHTRAG_MCP_INSTRUCTIONS_FILE=${LIGHTRAG_MCP_INSTRUCTIONS_FILE:-}
     depends_on:
       - lightrag-gateway

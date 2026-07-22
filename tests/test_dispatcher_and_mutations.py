@@ -4,6 +4,11 @@ from unittest.mock import AsyncMock, patch
 import pytest
 
 from lightrag_mcp_connect.client import LightRAGClient, LightRAGValidationError
+from lightrag_mcp_connect.instructions import (
+    instruction_profile,
+    instructions_path,
+    set_active_instruction_profile,
+)
 from lightrag_mcp_connect.models import (
     DeleteDocByIdResponse,
     DocStatus,
@@ -15,8 +20,16 @@ from lightrag_mcp_connect.server import handle_call_tool_refactored, handle_list
 from lightrag_mcp_connect.tool_handlers import (
     TOOL_HANDLERS,
     append_text,
+    get_agent_instructions,
     update_document,
 )
+
+
+@pytest.fixture(autouse=True)
+def reset_instruction_profile_state() -> None:
+    set_active_instruction_profile(None)
+    yield
+    set_active_instruction_profile(None)
 
 
 def processed_document(filename: str = "notes.md") -> DocumentInfo:
@@ -30,6 +43,7 @@ async def test_advertised_tools_have_registered_handlers() -> None:
     # All advertised tools must have registered handlers
     assert advertised.issubset(TOOL_HANDLERS), "Advertised tools without handlers"
     assert not {"insert_text", "insert_texts"} & advertised
+    assert "get_agent_instructions" in advertised
     for name in ("upload_document", "update_document", "append_text"):
         schema = next(tool.inputSchema for tool in tools if tool.name == name)
         assert next(iter(schema["properties"])) == "filename"
@@ -52,6 +66,90 @@ async def test_advertised_tools_have_registered_handlers() -> None:
 async def test_unknown_tool_is_a_real_mcp_error() -> None:
     result = await handle_call_tool_refactored("insert_text", {})
     assert result.isError is True
+
+
+@pytest.mark.asyncio
+async def test_get_agent_instructions_returns_configured_text() -> None:
+    client = AsyncMock(spec=LightRAGClient)
+    with (
+        patch.dict(
+            "os.environ",
+            {
+                "LIGHTRAG_MCP_CONNECTION_MODE": "remote",
+                "LIGHTRAG_MCP_INSTRUCTIONS_DIR": "/tmp/instructions",
+            },
+            clear=False,
+        ),
+        patch(
+            "lightrag_mcp_connect.tool_handlers.load_instructions",
+            return_value="Follow the workspace rules.",
+        ),
+    ):
+        set_active_instruction_profile("remote-admin")
+        result = await get_agent_instructions({}, client)
+
+    assert result == {
+        "instructions": "Follow the workspace rules.",
+        "configured": True,
+        "source_path": "/tmp/instructions/remote-admin__mcp-instructions.md",
+        "profile": "remote-admin",
+        "note": "Fallback for MCP clients that ignore initialize.instructions.",
+    }
+
+
+def test_instruction_profile_defaults_to_stdio_user() -> None:
+    with patch.dict("os.environ", {}, clear=False):
+        assert instruction_profile() == "stdio-user"
+
+
+def test_instruction_profile_uses_connection_mode_and_role() -> None:
+    with patch.dict(
+        "os.environ", {"LIGHTRAG_MCP_CONNECTION_MODE": "remote"}, clear=False
+    ):
+        assert instruction_profile(is_admin=False) == "remote-user"
+        assert instruction_profile(is_admin=True) == "remote-admin"
+
+
+def test_instruction_profile_honors_explicit_override() -> None:
+    with patch.dict(
+        "os.environ",
+        {"LIGHTRAG_MCP_INSTRUCTIONS_PROFILE": "stdio-admin"},
+        clear=False,
+    ):
+        assert instruction_profile(is_admin=False) == "stdio-admin"
+
+
+def test_instructions_path_uses_profile_directory_and_prefixed_name() -> None:
+    with patch.dict(
+        "os.environ",
+        {"LIGHTRAG_MCP_INSTRUCTIONS_DIR": "/srv/instructions"},
+        clear=False,
+    ):
+        assert (
+            instructions_path("remote-user")
+            == "/srv/instructions/remote-user__mcp-instructions.md"
+        )
+
+
+def test_instructions_path_prefers_profile_specific_override() -> None:
+    with patch.dict(
+        "os.environ",
+        {
+            "LIGHTRAG_MCP_INSTRUCTIONS_DIR": "/srv/instructions",
+            "LIGHTRAG_MCP_INSTRUCTIONS_REMOTE_ADMIN_FILE": "/etc/custom/admin.md",
+        },
+        clear=False,
+    ):
+        assert instructions_path("remote-admin") == "/etc/custom/admin.md"
+
+
+def test_instructions_path_falls_back_to_legacy_single_file() -> None:
+    with patch.dict(
+        "os.environ",
+        {"LIGHTRAG_MCP_INSTRUCTIONS_FILE": "/etc/lightrag/instructions.md"},
+        clear=False,
+    ):
+        assert instructions_path("stdio-user") == "/etc/lightrag/instructions.md"
 
 
 @pytest.mark.asyncio

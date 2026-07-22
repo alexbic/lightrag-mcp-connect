@@ -47,6 +47,9 @@ packages = ["lightrag_mcp_connect"]
 [tool.setuptools.package-dir]
 "lightrag_mcp_connect" = "mcp/app"
 
+[tool.setuptools.package-data]
+"lightrag_mcp_connect" = ["instructions/*.md"]
+
 [tool.black]
 line-length = 88
 target-version = ['py310']

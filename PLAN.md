@@ -50,6 +50,17 @@
 4. Publish release notes that call out managed workspace/gateway mode as the stable line and keep `v1.1.1` documented as the legacy simple-mode rollback pin.
 5. After the tag exists remotely, keep the Compose examples and local `uvx` snippets pinned to `v2.0.0` as already prepared here.
 
+### Current Validation Policy
+**Goal:** Avoid unnecessary version churn while the managed line is still under active downstream validation.
+
+**Decision recorded on 2026-07-22:**
+- Keep refining the current `v2.0.0` line for handshake-instruction and
+  profile-selection fixes.
+- Do not introduce a fresh version number for every deployment-level polish
+  iteration during this validation phase.
+- Revisit versioning only after the instruction/profile behavior is confirmed
+  end to end in a real downstream deployment.
+
 **Pre-checks:**
 - Confirm current branch is `feature/workspace-gateway`.
 - Confirm `git status -sb` is clean.

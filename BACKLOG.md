@@ -1,7 +1,6 @@
 # Backlog
 
 ## To Do
-- [ ] @docs: Document first-time setup flow for managed backend mode — DoD: README has copy/paste path.
 
 ## In Progress
 - [ ] @backend: Managed backend hardening and project readability cleanup — started 2026-07-21.
@@ -10,6 +9,11 @@
 - [ ] @qa: Review `LIGHTRAG_ADMIN_KEY` naming and docs for first-time user clarity.
 
 ## Done
+- [x] @release: Package profile-specific MCP instruction files and tighten first-run docs for `v2.0.0` — DoD met on 2026-07-22: packaged wheel now includes `instructions/*.md`, README now has a first-time managed setup path plus legacy single-file instructions note, and targeted MCP verification passed.
+- [x] @docs: Document first-time setup flow for managed backend mode — DoD met on 2026-07-22: README now includes a short copy/paste managed setup path and immediate post-deploy steps.
+- [x] @release: Keep the current managed validation line on `v2.0.0` while polishing handshake instructions — DoD met on 2026-07-22: release strategy now explicitly says not to cut another version just for instruction-profile cleanup during active downstream testing.
+- [x] @backend: Add profile-specific MCP handshake instructions — DoD met on 2026-07-22: the server now resolves `stdio-user`, `stdio-admin`, `remote-user`, and `remote-admin` instruction files, prefixed profile filenames are supported, and the fallback instructions tool returns the active profile plus source path.
+- [x] @backend: Add a client-agnostic fallback for MCP handshake instructions — DoD met on 2026-07-22: the server still injects `initialize.instructions`, now also exposes `get_agent_instructions` for clients that ignore handshake injection, and docs/tests were updated with a passing verify loop.
 - [x] @docs: Document local `uv` lockfile policy for agent workflows — DoD met on 2026-07-21: `AGENTS.md` and `TECH_STACK.md` now say that `uv.lock` files created by local verification/dev runs are not committed in this repository and should be ignored/cleaned up.
 - [x] @release: Prepare managed workspace/gateway release `v2.0.0` — DoD met on 2026-07-21: package/runtime versions, README, and managed Compose pins now point to `v2.0.0`; legacy `v1.1.1` guidance remains explicit; full verify loop passed; release/tag plan recorded.
 - [x] @qa: Verify admin tools through MCP — DoD: admin sees tools; normal workspace key does not. Verified on 2026-07-21 with MCP integration tests plus gateway admin-auth/registry coverage.

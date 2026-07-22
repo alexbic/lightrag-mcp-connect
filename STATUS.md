@@ -1,6 +1,6 @@
 # Status: LightRAG MCP Gateway
 
-**Updated:** 2026-07-21T23:20:00Z
+**Updated:** 2026-07-22T00:55:00Z
 
 ## Summary
 Managed backend mode is the current release track. The public connector repository owns both `mcp/app` and `gateway/app`; deployments should consume released versions from this repository instead of copying connector source into separate deployment repositories.
@@ -8,7 +8,7 @@ Managed backend mode is the current release track. The public connector reposito
 ## Progress
 - M1 Managed Backend Baseline: █████████░ 90%
 - M2 Managed MCP Release: ██████████ 100%
-- M3 Public Repository Polish: ██████░░░░ 60%
+- M3 Public Repository Polish: ███████░░░ 70%
 - M4 External LightRAG Proxy Mode: ░░░░░░░░░░ 0%
 
 ## Done
@@ -71,14 +71,71 @@ Managed backend mode is the current release track. The public connector reposito
 
 ## In Work
 - Managed backend hardening/readability cleanup remains open; the Phase 2 MCP admin-visibility follow-up is now verified.
+- Some MCP clients appear to ignore `initialize.instructions` even though the
+  server returns them. The MCP now exposes `get_agent_instructions` as a
+  client-agnostic fallback, but this still needs downstream release/tag
+  publication and live-client validation outside the repository.
+- The next handshake-instructions cleanup is to stop serving one shared text to
+  every caller. We need profile-specific instructions for connection mode and
+  role: `stdio-user`, `stdio-admin`, `remote-user`, and `remote-admin`.
+- Release strategy decision on 2026-07-22:
+  - do not cut a new version just for the instruction-profile work yet;
+  - keep polishing the current `v2.0.0` release line until the handshake
+    instruction behavior is correct in real deployments;
+  - after that, update the existing release line/deployment target rather than
+    introducing another version bump during the active validation phase.
+
+## Recently Done
+- Closed the current `v2.0.0` release-polish pass for instruction profiles:
+  - packaged wheel now includes all four profile-specific markdown files under
+    `lightrag_mcp_connect/instructions/`;
+  - README now includes a short first-time managed setup path plus immediate
+    post-deploy steps;
+  - README now documents that legacy `LIGHTRAG_MCP_INSTRUCTIONS_FILE` still
+    works as a shared fallback.
+- Tightened instruction-profile verification:
+  - added tests for profile-specific env override precedence and legacy
+    single-file fallback;
+  - added test isolation for the active profile state between cases.
+- Re-ran focused packaging/test verification after the release-polish pass:
+  - `UV_CACHE_DIR=/tmp/lightrag-mcp-cache uv run --extra dev pytest -q tests/test_dispatcher_and_mutations.py` → 18 passed.
+  - `python3 -m pip wheel --no-build-isolation --no-deps . -w /tmp/lightrag-mcp-build` → passed.
+  - inspected `/tmp/lightrag-mcp-build/lightrag_mcp_connect-2.0.0-py3-none-any.whl` and confirmed it contains:
+    - `lightrag_mcp_connect/instructions/stdio-user__mcp-instructions.md`
+    - `lightrag_mcp_connect/instructions/stdio-admin__mcp-instructions.md`
+    - `lightrag_mcp_connect/instructions/remote-user__mcp-instructions.md`
+    - `lightrag_mcp_connect/instructions/remote-admin__mcp-instructions.md`
+- Added `mcp/app/instructions.py` so handshake-instruction loading is shared
+  between server initialization and tool handlers.
+- Added the `get_agent_instructions` MCP tool so clients that ignore
+  `initialize.instructions` can fetch the active instruction text explicitly.
+- Updated README agent-instructions docs to explain the fallback behavior.
+- Added profile-specific handshake instruction selection:
+  - supported profiles are `stdio-user`, `stdio-admin`, `remote-user`, and
+    `remote-admin`;
+  - profile-specific file names now use explicit prefixes such as
+    `remote-admin__mcp-instructions.md`;
+  - profile resolution supports `LIGHTRAG_MCP_CONNECTION_MODE`,
+    `LIGHTRAG_MCP_INSTRUCTIONS_PROFILE`, `LIGHTRAG_MCP_INSTRUCTIONS_DIR`, and
+    per-profile file override env vars;
+  - `get_agent_instructions` now returns the active profile and the resolved
+    source path, not just the raw instruction text.
+- Re-ran focused MCP verification after the fallback change:
+  - `UV_CACHE_DIR=/tmp/lightrag-mcp-cache uv run --extra dev pytest -q tests/test_dispatcher_and_mutations.py` → 12 passed.
+  - `MYPY_CACHE_DIR=/tmp/lightrag-mypy-cache UV_CACHE_DIR=/tmp/lightrag-mcp-cache uv run --extra dev mypy mcp/app` → clean.
+  - `UV_CACHE_DIR=/tmp/lightrag-mcp-cache uv run --extra dev black --check mcp/app tests` → passed.
 
 ## Blockers
 - None known.
 
 ## Next
-- Publish the verified annotated tag `v2.0.0` from this release commit so downstream projects can pin it for validation.
-- Test the published `v2.0.0` tag from another LightRAG project before drafting GitHub release notes.
-- Publish release notes that call out managed workspace/gateway mode as the stable line and preserve `v1.1.1` as the legacy rollback pin after downstream validation succeeds.
+- Finish the instruction-profile cleanup and live validation on the existing
+  `v2.0.0` line before deciding whether any new version is needed.
+- Test the updated `v2.0.0` line from another LightRAG project before drafting
+  final release notes.
+- Publish release notes that call out managed workspace/gateway mode as the
+  stable line and preserve `v1.1.1` as the legacy rollback pin after
+  downstream validation succeeds.
 - Preserve legacy stability guidance by keeping `v1.1.1` as the documented pin for users who need the old simple-mode line.
 - Keep `BACKLOG.md` and `STATUS.md` updated before and during future repository work so interrupted sessions can be resumed safely.
 - Decompose future large tasks into independently testable backlog items before implementation.

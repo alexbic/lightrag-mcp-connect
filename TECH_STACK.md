@@ -31,6 +31,10 @@
 ## Key Environment Variables
 - `LIGHTRAG_ADMIN_KEY`: owner/admin key imported into registry as `is_admin=true`.
 - `LIGHTRAG_API_KEY`: client key used by MCP simple mode or by an MCP instance connecting to the gateway.
+- `LIGHTRAG_MCP_CONNECTION_MODE`: selects instruction transport profile resolution, `stdio` or `remote`.
+- `LIGHTRAG_MCP_INSTRUCTIONS_PROFILE`: optional explicit instruction profile override, one of `stdio-user`, `stdio-admin`, `remote-user`, `remote-admin`.
+- `LIGHTRAG_MCP_INSTRUCTIONS_DIR`: optional directory containing profile-specific handshake instruction files named with prefixed filenames such as `remote-admin__mcp-instructions.md`.
+- `LIGHTRAG_MCP_INSTRUCTIONS_<PROFILE>_FILE`: optional per-profile file override, for example `LIGHTRAG_MCP_INSTRUCTIONS_REMOTE_ADMIN_FILE`.
 - `LIGHTRAG_SERVER_KEY`: internal gateway-to-child LightRAG key; never give to clients.
 - `WORKSPACE_KEY_PEPPER`: HMAC pepper for workspace key hashing.
 - `POSTGRES_*`: database connection.

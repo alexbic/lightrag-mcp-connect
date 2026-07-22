@@ -10,6 +10,12 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from .client import LightRAGClient, LightRAGAuthError, LightRAGValidationError
 from .content_store import DocumentContentStore
+from .instructions import (
+    active_instruction_profile,
+    instruction_profile,
+    instructions_path,
+    load_instructions,
+)
 from .models import AppendTextResponse, UpdateDocumentResponse
 
 ToolResult = Any
@@ -146,6 +152,22 @@ def _allowed_local_file(file_path: str) -> Path:
     if not candidate.is_file():
         raise LightRAGValidationError("file_path is not a regular file")
     return candidate
+
+
+@tool_handler("get_agent_instructions")
+async def get_agent_instructions(
+    arguments: Dict[str, Any], client: LightRAGClient
+) -> ToolResult:
+    EmptyArguments.model_validate(arguments)
+    profile = active_instruction_profile() or instruction_profile()
+    instructions = load_instructions(profile)
+    return {
+        "instructions": instructions,
+        "configured": bool(instructions),
+        "source_path": instructions_path(profile),
+        "profile": profile,
+        "note": ("Fallback for MCP clients that ignore initialize.instructions."),
+    }
 
 
 def _source_filename(args: UploadDocumentArguments) -> str:

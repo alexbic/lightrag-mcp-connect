@@ -221,9 +221,24 @@ Mode is determined by environment variables:
 
 ### Agent instructions
 
-The MCP server can inject instructions into agents' system prompts at handshake (via the `instructions` field in `InitializeResult`). Use this to teach agents workspace-aware conventions without editing config files on every machine.
+The MCP server can inject instructions into the client context at handshake (via the `instructions` field in `InitializeResult`). Use this to deliver only the guidance relevant to that caller's connection type and role.
 
-**Enable:** Set `LIGHTRAG_MCP_INSTRUCTIONS_FILE=/path/to/instructions.md` and restart the MCP server. See `mcp/app/instructions.example.md` for format.
+**Profiles:** `stdio-user`, `stdio-admin`, `remote-user`, `remote-admin`
+
+**Enable with a directory:** Set `LIGHTRAG_MCP_INSTRUCTIONS_DIR=/path/to/instructions` and add prefixed files such as:
+
+- `stdio-user__mcp-instructions.md`
+- `stdio-admin__mcp-instructions.md`
+- `remote-user__mcp-instructions.md`
+- `remote-admin__mcp-instructions.md`
+
+Set `LIGHTRAG_MCP_CONNECTION_MODE=stdio` or `remote`. In gateway mode, the server also checks whether the active env key is an admin key and picks the matching admin or user profile.
+
+**Optional override:** Set `LIGHTRAG_MCP_INSTRUCTIONS_PROFILE` to force one specific profile, or set per-profile file env vars such as `LIGHTRAG_MCP_INSTRUCTIONS_REMOTE_ADMIN_FILE`.
+
+**Legacy compatibility:** `LIGHTRAG_MCP_INSTRUCTIONS_FILE=/path/to/instructions.md` still works as a single shared fallback if you do not want per-profile files yet.
+
+Some MCP clients do not currently inject `initialize.instructions` into the agent context even when the server returns them. For those clients, call `get_agent_instructions` to fetch the exact active instruction text from the server as a fallback.
 
 ### Future: multi-user hosted access
 
@@ -299,6 +314,10 @@ streamable-HTTP MCP wrapper. The gateway starts official
 `lightrag-server` child processes per workspace, so there is no separate
 long-lived LightRAG service to wire by hand in the default remote path.
 
+### First-time managed setup
+
+If you just want the shortest copy/paste path for `v2.0.0`, use this:
+
 ```bash
 git clone https://github.com/alexbic/lightrag-mcp-connect.git
 cd lightrag-mcp-connect/deploy
@@ -313,6 +332,15 @@ docker compose -f docker-compose.yml up -d --build
 # Already running Traefik? Also set TRAEFIK_NETWORK in .env, then:
 docker compose -f docker-compose.traefik.yml up -d --build
 ```
+
+After the stack is up:
+
+1. Open `https://mcp.example.com/mcp` through your MCP client.
+2. Sign in with the one-time password from `MCP_AUTH_PASSWORD`.
+3. Use the admin key you set in `LIGHTRAG_API_KEY` to create workspace keys for collaborators.
+4. Keep `v1.1.1` pinned only if you intentionally need the old simple-mode line instead of the managed gateway line.
+
+If you want ready-made instruction templates for the four MCP profiles, copy them from [`mcp/app/instructions/`](mcp/app/instructions/) into your deployment-specific instructions directory and point `LIGHTRAG_MCP_INSTRUCTIONS_DIR` at that folder.
 
 **Want the most explicit from-zero example?**
 `docker-compose.full-example.yml` in the same folder keeps the same
@@ -381,7 +409,7 @@ transports (stdio vs. streamable-HTTP-over-OAuth) pointed at it.
 
 ## Tools
 
-19 tools are exposed via `tools/list` — document management (upload,
+20 tools are exposed via `tools/list` — document management (upload,
 upload, scan, retrieve, delete), querying, knowledge
 graph (entities, relations, labels), and system status.
 

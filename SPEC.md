@@ -22,6 +22,7 @@ Run one LightRAG endpoint that supports many isolated workspaces without adding 
 - F8: `LIGHTRAG_SERVER_KEY` is used only internally from gateway to child LightRAG servers.
 - F9: Workspace creation/key issuance is a data operation, not an infrastructure operation.
 - F10: Current release supports managed backend mode only.
+- F11: MCP handshake instructions must support profile-specific delivery so callers receive only the guidance relevant to their connection type and role.
 
 ## Non-Functional Requirements
 - NF1: No secrets are committed or printed in logs/docs.
@@ -29,6 +30,7 @@ Run one LightRAG endpoint that supports many isolated workspaces without adding 
 - NF3: Unknown, disabled, or mismatched workspaces fail closed.
 - NF4: Local tests, type checks, format checks, and Compose config validation must pass before deploy.
 - NF5: Hosted deployment changes require read-only inspection first and explicit deploy intent.
+- NF6: Instruction files and examples must avoid product-specific assistant branding and describe clients generically.
 
 ## Out of Scope for Current Release
 - External LightRAG proxy mode.

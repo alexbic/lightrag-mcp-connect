@@ -18,32 +18,6 @@ from mcp.types import (
     Tool,
 )
 
-
-def load_instructions() -> str:
-    """Load the server instructions from a file, if configured.
-
-    Reads the file path from LIGHTRAG_MCP_INSTRUCTIONS_FILE and returns
-    its contents as UTF-8 text. If the env var is unset or the file does
-    not exist, returns an empty string (no instructions injected).
-
-    The instructions file is plain markdown; the MCP client injects it into
-    the agent's system prompt once during handshake. Use this to give
-    agents workspace-aware conventions (naming rules, what to save, etc.)
-    without editing Claude Desktop / Claude Code configs on every machine.
-    """
-    path = os.getenv("LIGHTRAG_MCP_INSTRUCTIONS_FILE")
-    if not path:
-        return ""
-    try:
-        return Path(path).read_text(encoding="utf-8")
-    except Exception:
-        # If the file is missing or unreadable, log and return empty rather
-        # than blocking server startup. Instructions are a convenience, not a
-        # requirement.
-        logger.warning("Failed to read instructions file: %s", path)
-        return ""
-
-
 from .client import (
     LightRAGClient,
     LightRAGError,
@@ -55,6 +29,11 @@ from .client import (
     LightRAGServerError,
     set_request_api_key,
     reset_request_api_key,
+)
+from .instructions import instructions_path, load_instructions
+from .instructions import (
+    instruction_profile,
+    set_active_instruction_profile,
 )
 from .tool_handlers import TOOL_HANDLERS
 
@@ -172,6 +151,35 @@ LIGHTRAG_SUPPORTED_EXTENSIONS = frozenset(
 # UTF-8 text, so text_content is equally valid for those. These four
 # genuinely need real file bytes; text_content can't represent them.
 LIGHTRAG_BINARY_ONLY_EXTENSIONS = frozenset({".pdf", ".docx", ".pptx", ".xlsx"})
+
+
+async def _env_key_is_admin() -> bool:
+    """Return whether the configured env key has admin access in gateway mode."""
+    gateway_url = os.getenv("LIGHTRAG_GATEWAY_URL")
+    admin_key = os.getenv("LIGHTRAG_API_KEY")
+    if not gateway_url or not admin_key:
+        return False
+
+    global _is_admin_cache
+    if _is_admin_cache is None:
+        import httpx
+
+        try:
+            async with httpx.AsyncClient(timeout=5.0) as http:
+                response = await http.get(
+                    f"{gateway_url.rstrip('/')}/_workspaces",
+                    headers={"X-Admin-Key": admin_key},
+                )
+                _is_admin_cache = response.status_code == 200
+                logger.info(
+                    "Gateway admin check: %s (status %d)",
+                    "admin" if _is_admin_cache else "not admin",
+                    response.status_code,
+                )
+        except Exception as exc:
+            logger.warning("Gateway admin check failed: %s", exc)
+            _is_admin_cache = False
+    return _is_admin_cache
 
 
 def _resolve_allowed_file_path(file_path: str) -> Path:
@@ -478,6 +486,16 @@ async def handle_list_tools() -> List[Tool]:  # ListToolsResult:
     # Document Management Tools
     tools.extend(
         [
+            Tool(
+                name="get_agent_instructions",
+                description=(
+                    "Return the active MCP agent instructions text configured on "
+                    "the server. Use this as a fallback when your MCP client "
+                    "does not inject initialize.instructions into the agent "
+                    "context during handshake."
+                ),
+                inputSchema={"type": "object", "properties": {}, "required": []},
+            ),
             Tool(
                 name="upload_document",
                 description=(
@@ -916,37 +934,7 @@ async def handle_list_tools() -> List[Tool]:  # ListToolsResult:
     # when the env key (or per-call override) has admin privileges. Simple
     # mode = no admin tools (the gateway endpoints don't exist).
     gateway_url = os.getenv("LIGHTRAG_GATEWAY_URL")
-    admin_key = os.getenv("LIGHTRAG_API_KEY")
-    show_admin = False
-
-    if gateway_url and admin_key:
-        # Probe gateway's /_workspaces endpoint with X-Admin-Key. A 200
-        # response means the key is an admin key; 401 means unauthorized.
-        # Cache the result globally so we only check once per process.
-        global _is_admin_cache
-        if _is_admin_cache is None:
-            import httpx
-
-            try:
-                async with httpx.AsyncClient(timeout=5.0) as http:
-                    response = await http.get(
-                        f"{gateway_url.rstrip('/')}/_workspaces",
-                        headers={"X-Admin-Key": admin_key},
-                    )
-                    # 200 = admin, 401 = not admin, other = treat as not admin
-                    show_admin = response.status_code == 200
-                    _is_admin_cache = show_admin
-                    logger.info(
-                        "Gateway admin check: %s (status %d)",
-                        "admin" if show_admin else "not admin",
-                        response.status_code,
-                    )
-            except Exception as exc:
-                # Network/timeout errors = assume not admin, don't block startup
-                logger.warning("Gateway admin check failed: %s", exc)
-                _is_admin_cache = False
-        else:
-            show_admin = _is_admin_cache
+    show_admin = await _env_key_is_admin()
 
     if show_admin:
         tools.extend(admin_tools)
@@ -1243,12 +1231,17 @@ async def main() -> None:
             logger.info(f"  - Server capabilities: {capabilities}")
             logger.info(f"  - Capabilities type: {type(capabilities)}")
 
+            is_admin = await _env_key_is_admin()
+            profile = instruction_profile(is_admin=is_admin)
+            set_active_instruction_profile(profile)
+            instructions = load_instructions(profile)
+
             # Create initialization options
             init_options = InitializationOptions(
                 server_name="lightrag-mcp-connect",
                 server_version="2.0.0",
                 capabilities=capabilities,
-                instructions=load_instructions(),
+                instructions=instructions,
             )
             logger.info(f"INITIALIZATION OPTIONS:")
             logger.info(
@@ -1256,6 +1249,10 @@ async def main() -> None:
             )
             logger.info(
                 f"  - Instructions preview: {init_options.instructions[:200] if init_options.instructions else '(none)'}"
+            )
+            logger.info("  - Instructions profile: %s", profile)
+            logger.info(
+                "  - Instructions path: %s", instructions_path(profile) or "(unset)"
             )
             logger.info(f"  - Init options: {init_options}")
             logger.info(f"  - Init options type: {type(init_options)}")
